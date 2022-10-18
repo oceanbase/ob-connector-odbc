@@ -1,0 +1,4 @@
+[submodule "libobclient"]
+	path = libobclient
+	url = https://github.com/oceanbase/obconnector-c.git
+	branch = master

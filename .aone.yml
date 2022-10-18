@@ -1,0 +1,6 @@
+ob-connector-odbc:
+  pkgpara:
+    DOCKER: 1
+ob-unixodbc:
+  pkgpara:
+    DOCKER: 1

@@ -1,0 +1,161 @@
+##########################################################
+#            OBFlow Secret Scan Ignore List              #
+##########################################################
+# Above the segmentation lines there are suspected privacy information #
+# Please use the file name as the first line and the igored information #
+# should be started with tab. #
+# Under the segmentation lines there are the folders which you need to ignore #
+##########################################################
+**
+  www.unixodbc.org
+  http://www.unixODBC.org/
+  http://www.unixODBC.org
+  http://genix.net/unixODBC/
+  holgerschurig@gmx.de
+  http://home.nikocity.de/hschurig
+  http://www.merant.com/datadirect/download/docs/odbc16/Odbcref/rappc.htm
+  per.bengtsson@mimer.se
+  http://developer.mimer.se).
+  http://unixodbc.org
+  nick@easysoft.com
+  http://www.postgresql.org)
+  pharvey@peterharvey.org
+  http://msdn.microsoft.com/library/en-us/odbc/htm/dasdkodbcoverview_64bit.asp
+  http://www.stardivision.com/
+  http://www.unixodbc.org/
+  http://sourceforge.net/projects/unixodbc
+  http://www.troll.no
+  pharvey@interlog.com 
+  https://git-scm.com/download/win
+  https://jira.mariadb.org/projects/ODBC/issues/
+  http://ftp.hosteurope.de/mirror/archive.mariadb.org//mariadb-%DB%/winx64-packages/mariadb-%DB%-winx64.msi
+  http://mirror.i3d.net/pub/mariadb//mariadb-%DB%/winx64-packages/mariadb-%DB%-winx64.msi 
+  https://facebook.github.io/watchman/)
+  http://www.unixodbc.org)
+  http://www.genix.net/unixODBC 
+  byronn@insightdist.com
+  fInick@unixodbc.org
+  http://bugs.mysql.com/bug.php?id=47005
+  http://unixodbc.org
+  https://www.gnu.org/licenses/
+  https://msdn.microsoft.com/en-us/library/ms715433%28v=vs.85%29.aspx
+  http://www.gnu.org/licenses/
+  https://github.com/oceanbase/obconnector-c.git
+  yiming.czw@taobao.com
+  jianliang.yjl@antfin.com
+  michael.bell@web.de
+  guangshu.wgs@antfin.com
+  http://www.gnu.org/licenses
+  https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1
+  yiming.czw@taobao.com
+  tromey@cygnus.com
+  bug-automake@gnu.org
+  automake-patches@gnu.org
+  bug-automake@gnu.org
+  nick@lurcher.org
+  fIpharvey@codebydesign.com
+  nick.gorham@easysoft.com
+  fInick@lurcher.org
+  http://www.gnu.org/licenses/lgpl.html
+  papowell@astart.com
+  blong@fiction.net
+  roessler@guug.de
+  me@cs.hmc.edu
+  tridge@samba.org
+  sharkey@netrics.com
+  kejin@visigenic.com
+  pharvey@codebydesign.com
+  julie@magenet.com
+  www.codebydesign.com/unixODBC
+  www.Hughes.com.au
+  sverrehu@online.no
+  gary@gnu.org
+  www.genix.net/unixODBC
+  http://www.unixodbc.org
+  https://msdn.microsoft.com/en-us/library/aa392708(v=vs.85).aspx
+  http://sourceforge.net/projects/unixodbc-gui-qt/
+  http://sourceforge.net/projects/unixodbc-test/
+  http://www.easysoft.org/projects/oracle
+  bug-libtool@gnu.org
+  http://www.opendarwin.org/projects/dlcompat
+  http://lists.gnu.org/archive/html/automake/2012-07/msg00001.html
+  nick.gorham@easysoft.com
+  qcai@starquest.com
+  nick@unixodbc.org
+  bug-autoconf@gnu.org
+  jrb3@best.com
+  bug-libtool@gnu.org
+  http://lists.gnu.org/archive/html/automake/2012-07/msg00001.html
+  http://lists.gnu.org/archive/html/automake/2012-07/msg00014.html
+  http://www.opendarwin.org/projects/dlcompat
+  http://www.gnu.org/licenses/gpl.html
+  rse@engelschall.com
+  kasal@ucw.cz
+  schwab@suse.de
+  guidod@gmx.de
+  http://www.gnu.org/software/pth/.
+  http://autoconf-archive.cryp.to/ac_define_dir.html
+  sharkey@netrics.com
+  www.peterharvey.org
+  http://sourceforge.net/projects/unixodbc/
+  craigberry@mac.com
+  suypport@easysoft.com
+  cp@chrisp.de
+  ftp://ftp.unixodbc.org/pub/beta/unixODBC/dlcompat-20010831.tar.gz
+  http://fink.sourceforge.net
+  craigberry@mac.com
+  bothner@cygnus.com
+  config-patches@gnu.org
+  ghazi@noc.rutgers.edu
+  akee@wpdis03.wpafb.af.mil
+  hewes@openmarket.com
+  ftp://ftp.gnu.org/pub/gnu/config/
+  http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd
+  http://www.w3.org/1999/xhtml
+  http://www.trolltech.com
+  http://www.codebydesign.com/DataArchitect
+  cmorrison@info2000.net
+  http://www.troll.no/
+  http://www.mysql.com/
+  http://www.mysql.com
+  http://www.info2000.net/~cmorrison/databuilder.html
+  gord@gnu.ai.mit.edu
+  M.Rathmann@ping.de
+  qmailr@lilly.ping.de
+  info@mariadb.com
+  http://www.php.net
+  http://timestamp.verisign.com/scripts/timstamp.dll)
+  https://visualstudio.microsoft.com/downloads/
+   https://git-scm.com/download/win  gord@gnu.ai.mit.edu
+  M.Rathmann@ping.de
+  qmailr@lilly.ping.de
+  info@mariadb.com
+  http://www.php.net  http://www.info2000.net/~cmorrison/databuilder.html 
+  https://cmake.org/download/
+  https://github.com/MariaDB/mariadb-connector-odbc.git
+  kc5tja@dolphin.openprojects.net
+  jrb3@best.com
+  tim.van.holder@pandora.be
+  gord@gnu.ai.mit.edu
+  http://schemas.microsoft.com/wix/2006/wi
+  https://brew.sh/
+  http://schemas.microsoft.com/office/word/2003/wordml
+  https://www.openssl.org/
+  https://docs.brew.sh/Installation
+  https://raw.githubusercontent.com/Homebrew/install/master/install.sh)
+  http://ctags.sourceforge.net
+  http://oceanbase.com/
+  https://gw.alipayobjects.com/zos/bmw-prod/d6c1a0b7-c714-4429-8a33-2b394a5c1bf1.svg
+  https://img.shields.io/badge/license-GNU%20LGPL%20version%202.1-green.svg?style=flat-square)
+  http://opensource.org/licenses/LGPL-2.1)
+  https://secure.travis-ci.org/MariaDB-Corporation/mariadb-connector-odbc.png?branch=master)
+  https://travis-ci.com/MariaDB-Corporation/mariadb-connector-odbc)
+  https://ci.appveyor.com/api/projects/status/1fv21j33a6mpkxq5/branch/master?svg=true)
+  https://ci.appveyor.com/project/LawrinNovitsky/mariadb-connector-odbc)
+  https://mariadb.com/kb/en/mariadb/about-mariadb-connector-odbc/)
+--------------------------------------------------------
+# Should use GLOB wildcard to config and analysis the ignored folder
+# The root patch should start with '/'
+=======
+--------------------------------------------------------
+# Config the ignored fold to escape the Chinese scan by GLOB wildcard
