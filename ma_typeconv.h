@@ -30,6 +30,7 @@ BOOL      MADB_ConversionSupported(MADB_DescRecord *From, MADB_DescRecord *To);
 size_t    MADB_ConvertNumericToChar(SQL_NUMERIC_STRUCT *Numeric, char *Buffer, int *ErrorCode);
 SQLLEN    MADB_CalculateLength(MADB_Stmt *Stmt, SQLLEN *OctetLengthPtr, MADB_DescRecord *CRec, void* DataPtr);
 SQLRETURN MADB_C2SQL(MADB_Stmt* Stmt, MADB_DescRecord *CRec, MADB_DescRecord *SqlRec, SQLULEN ParamSetIdx, MYSQL_BIND *bind);
+SQLRETURN MADB_C2RefCursor(MADB_Stmt* Stmt, MADB_DescRecord* IrdRec, SQLULEN ParamSetIdx, MYSQL_BIND *bind);
 
 SQLRETURN MADB_Wchar2Sql(MADB_Stmt *Stmt, MADB_DescRecord *CRec, void* DataPtr, SQLLEN Length,
                          MADB_DescRecord *SqlRec, MYSQL_BIND *MaBind, void **Buffer, unsigned long *LengthPtr);

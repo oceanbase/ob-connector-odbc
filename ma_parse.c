@@ -92,6 +92,8 @@ int MADB_ResetParser(MADB_Stmt *Stmt, char *OriginalQuery, SQLINTEGER OriginalLe
     Stmt->Query.BatchAllowed=      DSN_OPTION(Stmt->Connection, MADB_OPT_FLAG_MULTI_STATEMENTS) ? '\1' : '\0';
     Stmt->Query.AnsiQuotes=        MADB_SqlMode(Stmt->Connection, MADB_ANSI_QUOTES);
     Stmt->Query.NoBackslashEscape= MADB_SqlMode(Stmt->Connection, MADB_NO_BACKSLASH_ESCAPES);
+    Stmt->Query.BatchMax = Stmt->Connection->Dsn->BatchMax;
+    Stmt->Query.BatchSwitch = Stmt->Connection->Dsn->BatchSwitch;
   }
  
   return 0;
@@ -139,8 +141,9 @@ int MADB_ParseQuery(MADB_QUERY * Query)
   /* make sure we don't have trailing whitespace or semicolon */
   Query->RefinedLength= SqlRtrim(Query->RefinedText, (int)Query->RefinedLength);
   Query->RefinedText=  ltrim(Query->RefinedText);
+  Query->RefinedLength = strlen(Query->RefinedText);
   Query->RefinedText=  FixIsoFormat(Query->RefinedText, &Query->RefinedLength);
-  Query->RefinedLength-= Query->RefinedText - Query->allocated;
+  //Query->RefinedLength-= Query->RefinedText - Query->allocated;
 
   /* Making copy of "original" string, with minimal changes required to be able to execute */
   Query->Original= strndup(Query->RefinedText, Query->RefinedLength);
@@ -361,9 +364,9 @@ char* FixIsoFormat(char * StmtString, size_t *Length)
   {
     char *Res;
 
+    StmtString[*Length - 1] = '\0';
     ++StmtString;
-    StmtString[*Length - 1]= '\0';
-
+    
     Res= trim(StmtString);
     *Length= strlen(Res);
 

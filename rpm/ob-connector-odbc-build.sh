@@ -1,5 +1,4 @@
 #!/bin/bash
-#for taobao abs
 # Usage: obclient-build.sh <oceanbasepath> <package> <version> <release>
 # Usage: obclient-build.sh
 

@@ -4,7 +4,6 @@ Release: %(echo %RELEASE)%{?dist}
 License: LGPL
 Group: applications/database
 buildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
-Packager: guangshu.wgs@antfin.com
 Autoreq: no
 Prefix: /u01/obclient
 Summary: Oracle 5.6 and some patches from Oceanbase

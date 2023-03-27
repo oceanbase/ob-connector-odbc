@@ -90,6 +90,8 @@ MADB_DsnKey DsnKeys[]=
   {"READTIMEOUT",   offsetof(MADB_Dsn, ReadTimeout),       DSN_TYPE_INT,    0, 0},
   {"WRITETIMEOUT",  offsetof(MADB_Dsn, WriteTimeout),      DSN_TYPE_INT,    0, 0},
   {"NO_SSPS",       offsetof(MADB_Dsn, NoSsps),            DSN_TYPE_BOOL,    0, 0},
+  {"BATCHSWITCH",   offsetof(MADB_Dsn, BatchSwitch),       DSN_TYPE_BOOL,    0, 0},
+  {"BATCHMAX",    offsetof(MADB_Dsn, BatchMax),        DSN_TYPE_INT,    0, 0},
   /* Terminating Null */
   {NULL, 0, DSN_TYPE_BOOL,0,0}
 };

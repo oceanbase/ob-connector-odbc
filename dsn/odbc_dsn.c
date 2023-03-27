@@ -90,6 +90,8 @@ MADB_DsnMap DsnMap[] = {
   {&DsnKeys[46], 2, txtWriteTimeOut,      5, 0},
   {&DsnKeys[18], 3, txtPluginDir,       260, 0},
   {&DsnKeys[47], 3, ckNOSSPS,             0, 0},
+  {&DsnKeys[48], 3, ckBatchSwitch,        0, 0},
+  {&DsnKeys[49], 3, txtBatchMax,        260, 0},
   {&DsnKeys[19], 4, txtSslKey,          260, 0},
   {&DsnKeys[20], 4, txtSslCert,         260, 0},
   {&DsnKeys[21], 4, txtSslCertAuth,     260, 0},

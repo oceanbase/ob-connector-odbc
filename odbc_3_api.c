@@ -88,8 +88,8 @@ SQLRETURN SQL_API SQLBindCol(SQLHSTMT StatementHandle,
   MDBUG_C_DUMP(Stmt->Connection, BufferLength, d);
   MDBUG_C_DUMP(Stmt->Connection, StrLen_or_Ind, 0x);
 
-  if (StrLen_or_Ind)
-    MDBUG_C_DUMP(Stmt->Connection, *StrLen_or_Ind, d);
+  //if (StrLen_or_Ind)
+  //  MDBUG_C_DUMP(Stmt->Connection, *StrLen_or_Ind, d);
 
   ret= Stmt->Methods->BindColumn(Stmt, ColumnNumber, TargetType, TargetValuePtr, BufferLength, StrLen_or_Ind);
 
@@ -754,6 +754,7 @@ SQLRETURN SQL_API SQLDescribeParam(SQLHSTMT StatementHandle,
     SQLSMALLINT *NullablePtr)
 {
   MADB_Stmt *Stmt= (MADB_Stmt *)StatementHandle;
+  SQLRETURN ret = SQL_SUCCESS;
 
   if (!Stmt)
     return SQL_INVALID_HANDLE;
@@ -770,6 +771,8 @@ SQLRETURN SQL_API SQLDescribeParam(SQLHSTMT StatementHandle,
     *ParameterSizePtr= 1024 * 1024 * 24;
   if (NullablePtr)
     *NullablePtr= SQL_NULLABLE_UNKNOWN;
+
+  MDBUG_C_RETURN(Stmt->Connection, ret, &Stmt->Error);
   return SQL_SUCCESS;
 }
 /* }}} */
@@ -1206,9 +1209,7 @@ SQLRETURN SQL_API SQLFetch(SQLHSTMT StatementHandle)
 /* }}} */
 
 /* {{{ SQLFetchScroll */
-SQLRETURN SQL_API SQLFetchScroll(SQLHSTMT StatementHandle,
-    SQLSMALLINT FetchOrientation,
-    SQLLEN FetchOffset)
+SQLRETURN SQL_API SQLFetchScroll(SQLHSTMT StatementHandle, SQLSMALLINT FetchOrientation, SQLLEN FetchOffset)
 {
   MADB_Stmt *Stmt;
 
@@ -1227,8 +1228,7 @@ SQLRETURN SQL_API SQLFetchScroll(SQLHSTMT StatementHandle,
 /* }}} */
 
 /* {{{ SQLFreeHandle */
-SQLRETURN SQL_API SQLFreeHandle(SQLSMALLINT HandleType,
-                                SQLHANDLE Handle)
+SQLRETURN SQL_API SQLFreeHandle(SQLSMALLINT HandleType, SQLHANDLE Handle)
 {
   SQLRETURN ret= SQL_INVALID_HANDLE;
   MADB_CHECK_HANDLE_CLEAR_ERROR(HandleType, Handle);
@@ -2217,14 +2217,18 @@ SQLRETURN SQL_API SQLProcedureColumns(SQLHSTMT StatementHandle,
     SQLSMALLINT NameLength4)
 {
   MADB_Stmt *Stmt= (MADB_Stmt *)StatementHandle;
+  SQLRETURN ret;
+  MDBUG_C_ENTER(Stmt->Connection, "SQLProcedureColumns");
 
   if (!Stmt)
     return SQL_INVALID_HANDLE;
   MADB_CLEAR_ERROR(&Stmt->Error);
 
-  return Stmt->Methods->ProcedureColumns(Stmt, (char *)CatalogName,NameLength1, (char *)SchemaName, NameLength2,
+  ret =  Stmt->Methods->ProcedureColumns(Stmt, (char *)CatalogName,NameLength1, (char *)SchemaName, NameLength2,
                                          (char *)ProcName, NameLength3, (char *)ColumnName, NameLength4);
 
+  MDBUG_C_RETURN(Stmt->Connection, ret, &Stmt->Error);
+  return ret;
 }
 /* }}} */
 
@@ -2246,6 +2250,7 @@ SQLRETURN SQL_API SQLProcedureColumnsW(SQLHSTMT StatementHandle,
        *CpProc= NULL,
        *CpColumn= NULL;
   SQLULEN CpLength1= 0, CpLength2= 0, CpLength3= 0, CpLength4= 0;
+  MDBUG_C_ENTER(Stmt->Connection, "SQLProcedureColumnsW");
 
   if (!Stmt)
     return SQL_INVALID_HANDLE;
@@ -2275,6 +2280,7 @@ SQLRETURN SQL_API SQLProcedureColumnsW(SQLHSTMT StatementHandle,
   MADB_FREE(CpProc);
   MADB_FREE(CpColumn);
 
+  MDBUG_C_RETURN(Stmt->Connection, ret, &Stmt->Error);
   return ret;
 }
 /* }}} */
@@ -2289,13 +2295,18 @@ SQLRETURN SQL_API SQLProcedures(SQLHSTMT StatementHandle,
     SQLSMALLINT NameLength3)
 {
   MADB_Stmt *Stmt= (MADB_Stmt *)StatementHandle;
+  SQLRETURN ret;
+
+  MDBUG_C_ENTER(Stmt->Connection, "SQLProcedures");
 
   if (!Stmt)
     return SQL_INVALID_HANDLE;
   MADB_CLEAR_ERROR(&Stmt->Error);
 
-  return Stmt->Methods->Procedures(Stmt, (char *)CatalogName, NameLength1, (char *)SchemaName, 
+  ret = Stmt->Methods->Procedures(Stmt, (char *)CatalogName, NameLength1, (char *)SchemaName, 
                                    NameLength2, (char *)ProcName, NameLength3);
+  MDBUG_C_RETURN(Stmt->Connection, ret, &Stmt->Error);
+  return ret;
 }
 /* }}} */
 
@@ -2315,6 +2326,8 @@ SQLRETURN SQL_API SQLProceduresW(SQLHSTMT StatementHandle,
        *CpProc= NULL;
   SQLULEN CpLength1, CpLength2, CpLength3;
 
+  MDBUG_C_ENTER(Stmt->Connection, "SQLProceduresW");
+
   if (!Stmt)
     return SQL_INVALID_HANDLE;
   MADB_CLEAR_ERROR(&Stmt->Error);
@@ -2328,6 +2341,7 @@ SQLRETURN SQL_API SQLProceduresW(SQLHSTMT StatementHandle,
   MADB_FREE(CpCatalog);
   MADB_FREE(CpSchema);
   MADB_FREE(CpProc);
+  MDBUG_C_RETURN(Stmt->Connection, ret, &Stmt->Error);
   return ret;
 }
 /* }}} */
@@ -2545,7 +2559,8 @@ SQLRETURN SQL_API SQLSetDescRec(SQLHDESC DescriptorHandle,
   if (!Desc)
     return SQL_INVALID_HANDLE;
 
-  MDBUG_C_ENTER(Desc->Dbc, "SQLSetDescRec");
+  if (Desc->Dbc)
+    MDBUG_C_ENTER(Desc->Dbc, "SQLSetDescRec");
 
   //MADB_NOT_IMPLEMENTED(Desc);
   return MADB_DescSetRec(Desc, RecNumber, Type, SubType, Length, Precision, Scale, DataPtr, StringLengthPtr, IndicatorPtr, FALSE);
@@ -2568,7 +2583,8 @@ SQLRETURN SQL_API SQLSetDescRecW(SQLHDESC DescriptorHandle,
   if (!Desc)
     return SQL_INVALID_HANDLE;
 
-  MDBUG_C_ENTER(Desc->Dbc, "SQLSetDescRecW");
+  if (Desc->Dbc)
+    MDBUG_C_ENTER(Desc->Dbc, "SQLSetDescRecW");
 
   //MADB_NOT_IMPLEMENTED(Desc);
   return MADB_DescSetRec(Desc, RecNumber, Type, SubType, Length, Precision, Scale, DataPtr, StringLengthPtr, IndicatorPtr, TRUE);

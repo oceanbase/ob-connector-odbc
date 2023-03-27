@@ -1375,6 +1375,12 @@ SQLRETURN MADB_C2SQL(MADB_Stmt* Stmt, MADB_DescRecord *CRec, MADB_DescRecord *Sq
 }
 /* }}} */
 
+SQLRETURN MADB_C2RefCursor(MADB_Stmt* Stmt, MADB_DescRecord* IrdRec, SQLULEN ParamSetIdx, MYSQL_BIND *bind)
+{
+  bind->buffer_type = MYSQL_TYPE_NULL;
+  return SQL_SUCCESS;
+}
+
 SQLLEN MADB_CalculateLength2Str(MADB_Stmt *Stmt, SQLLEN *OctetLengthPtr, MADB_DescRecord *CRec, void* DataPtr)
 {
   /* If no OctetLengthPtr was specified, or OctetLengthPtr is SQL_NTS character

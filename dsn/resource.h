@@ -107,6 +107,8 @@
 #define txtReadTimeOut                  1231
 #define txtWriteTimeOut                 1232
 #define ckNOSSPS                        1233
+#define ckBatchSwitch                   1234
+#define txtBatchMax                     1235
 
 // Next default values for new objects
 // 

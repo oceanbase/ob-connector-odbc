@@ -8,8 +8,6 @@
 #
 # Version: $id$
 #
-# Authors:
-#   yiming <yiming.czw@taobao.com>
 Name:       unix-odbc
 Version:    1.0.0
 Release:    1

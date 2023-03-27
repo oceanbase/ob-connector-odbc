@@ -234,7 +234,9 @@ SQLRETURN MADB_StmtForeignKeys(MADB_Stmt *Stmt, char *PKCatalogName, SQLSMALLINT
 
 /************** SQLProcedureColumnsOracle **********/
 #define MADB_PROCEDURE_COLUMNS_ORACLE \
-  "SELECT NULl as PROCEDURE_CAT, AG.OWNER as PROCEDURE_SCHEM, AG.OBJECT_NAME as PROCEDURE_NAME, AG.ARGUMENT_NAME as COLUMN_NAME," \
+  "SELECT NULl as PROCEDURE_CAT, AG.OWNER as PROCEDURE_SCHEM, " \
+      " AG.PROCEDURE_NAME AS PROCEDURE_NAME, " \
+      " AG.ARGUMENT_NAME as COLUMN_NAME, " \
       " DECODE(AG.IN_OUT,'IN',1,'OUT',4,'INOUT',2) as column_type," \
       " DECODE (AG.data_type, "\
       "   'CHAR', 1, 'VARCHAR2', 12, 'NUMBER', 3, 'LONG', -1, 'DATE', 93,"\
@@ -245,8 +247,26 @@ SQLRETURN MADB_StmtForeignKeys(MADB_Stmt *Stmt, char *PKCatalogName, SQLSMALLINT
       "   'XMLTYPE', 2009, 1111) as data_type ,AG.data_type as type_name , "\
       " DECODE (AG.data_precision, null, DECODE (AG.data_type, 'CHAR', AG.data_length, 'VARCHAR', AG.data_length,'VARCHAR2', AG.data_length, 'NVARCHAR2', AG.data_length, 'NCHAR', AG.data_length, 'NUMBER', 0, AG.data_length), AG.data_precision) as  COLUMN_SIZE, "\
       " 0 AS buffer_length , 0 as DECIMAL_DIGITS,0 as NUM_PREC_RADIX ,0 as NULLABLE ,null as REMARKS ,0 AS sql_data_type ,"\
-      " null as SQL_DATETIME_SUB,0 as CHAR_OCTET_LENGTH ,AG.POSITION as ORDINAL_POSITION , 'NO' as  IS_NULLABLE  FROM ALL_ARGUMENTS AG "
+      " null as SQL_DATETIME_SUB,0 as CHAR_OCTET_LENGTH ,AG.POSITION as ORDINAL_POSITION , 'NO' as  IS_NULLABLE  FROM  "\
+      " (select t.*, DECODE (t.PACKAGE_NAME, null, '', t.PACKAGE_NAME||'.') ||t.OBJECT_NAME AS PROCEDURE_NAME from ALL_ARGUMENTS t) AG "
 /************** SQLProcedureColumnsOracle **********/
+
+/************** SQLProcedure **************/
+#define MADB_PROCEDURE_ORACLE \
+  "SELECT SAR.OWNER AS PROCEDURE_CAT,"\
+    "NULL AS PROCEDURE_SCHEM,"\
+    "SAR.PROCEDURE_NAME2 AS PROCEDURE_NAME,"\
+    "NULL AS NUM_INPUT_PARAMS,"\
+    "NULL AS NUM_OUTPUT_PARAMS,"\
+    "NULL AS NUM_RESULT_SETS,"\
+    "NULL AS REMARKS,"\
+    "SAR.PROCEDURE_TYPE AS PROCEDURE_TYPE FROM "\
+    " (select t.*, "\
+    "  CASE WHEN t.OBJECT_TYPE = 'FUNCTION' then 2 WHEN t.OBJECT_TYPE= 'PROCEDURE' THEN 1 WHEN t.OBJECT_TYPE= 'PACKAGE' THEN 1 ELSE 0 END AS PROCEDURE_TYPE,"\
+    "  CASE WHEN t.OBJECT_TYPE ='PACKAGE' then t.OBJECT_NAME||'.'||t.PROCEDURE_NAME ELSE t.OBJECT_NAME END AS PROCEDURE_NAME2 "\
+    "  FROM SYS.ALL_PROCEDURES t"\
+    " ) SAR "
+/************** SQLProcedure **************/
 
 /************** SQLSpecialColumnsOracle **********/
 #define MADB_SPECIAL_COLUMNS_ROWID_ORACLE \

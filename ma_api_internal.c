@@ -125,6 +125,13 @@ SQLRETURN MA_SQLBindParameter(SQLHSTMT StatementHandle,
 
 
   MADB_CHECK_STMT_HANDLE(Stmt,stmt);
+
+  if (IS_ORACLE_MODE(Stmt)&&(ParameterType==SQL_DECIMAL||ParameterType== SQL_NUMERIC)&& 
+    BufferLength == sizeof(SQL_NUMERIC_STRUCT) && ParameterValuePtr) {
+    SQL_NUMERIC_STRUCT* tmp = (SQL_NUMERIC_STRUCT*)ParameterValuePtr;
+    DecimalDigits = tmp->scale;
+  }
+  
   ret= Stmt->Methods->BindParam(Stmt, ParameterNumber, InputOutputType, ValueType, ParameterType, ColumnSize, DecimalDigits,
                                   ParameterValuePtr, BufferLength, StrLen_or_IndPtr);
 

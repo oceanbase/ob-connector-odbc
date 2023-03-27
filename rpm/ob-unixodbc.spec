@@ -8,15 +8,12 @@
 #
 # Version: $id$
 #
-# Authors:
-#   yiming <yiming.czw@taobao.com>
 Name: %NAME
 Version: %VERSION
 Release: %(echo %RELEASE)%{?dist}
 License: LGPL & GPL
 Group: applications/database
 buildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
-Packager: jianliang.yjl@antfin.com
 Autoreq: no
 Prefix: /u01/oceanbase
 Summary: ODBC Driver

@@ -20,6 +20,12 @@
 #ifndef _ma_debug_h_
 #define _ma_debug_h_
 
+#ifndef WIN32
+#include <time.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#endif
+
 #ifndef MAODBC_DEBUG
 
 void ma_debug_print(my_bool ident, char *format, ...);
@@ -33,16 +39,12 @@ void ma_debug_print(my_bool ident, char *format, ...);
 
 #else
 
-#ifndef WIN32
-#include <time.h>
-#endif
-
 my_bool ma_debug_enable(void *Dbc);
 void ma_debug_print(my_bool ident, char *format, ...);
 void ma_debug_print_error(MADB_Error *err);
 
 /* Debug is on for connection */
-#define MDBUG_C_IS_ON(C) (ma_debug_enable(C))
+#define MDBUG_C_IS_ON(C) (C && ma_debug_enable(C))
 
 #ifdef WIN32
 #define MDBUG_C_ENTER(C,A)\
@@ -50,7 +52,7 @@ void ma_debug_print_error(MADB_Error *err);
     {\
     SYSTEMTIME st;\
     GetSystemTime(&st);\
-    ma_debug_print(0, ">>> %d-%02d-%02d %02d:%02d:%02d --- %s (thread: %lu) ---", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, A, ((MADB_Dbc*)(C))->mariadb ? mysql_thread_id(((MADB_Dbc*)(C))->mariadb) : 0);\
+    ma_debug_print(0, ">>> %d-%02d-%02d %02d:%02d:%02d --- %s (thread: %lu) ---", st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, A, (C&&((MADB_Dbc*)(C))->mariadb) ? mysql_thread_id(((MADB_Dbc*)(C))->mariadb) : 0);\
     }
 #else
 #define MDBUG_C_ENTER(C,A)\
@@ -58,7 +60,7 @@ void ma_debug_print_error(MADB_Error *err);
     {\
     time_t t = time(NULL);\
     struct tm st= *gmtime(&t);\
-    ma_debug_print(0, ">>> %d-%02d-%02d %02d:%02d:%02d --- %s (thread: %d) ---", st.tm_year + 1900, st.tm_mon + 1, st.tm_mday, st.tm_hour, st.tm_min, st.tm_sec,  A, ((MADB_Dbc*)(C))->mariadb ? mysql_thread_id(((MADB_Dbc*)(C))->mariadb) : 0);\
+    ma_debug_print(0, ">>> %d-%02d-%02d %02d:%02d:%02d --- %s (thread: %d) ---", st.tm_year + 1900, st.tm_mon + 1, st.tm_mday, st.tm_hour, st.tm_min, st.tm_sec,  A, (C&&((MADB_Dbc*)(C))->mariadb) ? mysql_thread_id(((MADB_Dbc*)(C))->mariadb) : 0);\
     }
 #endif
 

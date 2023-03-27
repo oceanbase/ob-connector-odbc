@@ -171,10 +171,35 @@ SQLRETURN MADB_StmtMoreResultsNossps(MADB_Stmt *Stmt)
   return ret;
 }
 
+SQLRETURN MADB_StmtMoreResultsRefCursor(MADB_Stmt *Stmt)
+{
+  SQLRETURN ret = SQL_SUCCESS;
+  MADB_FREE(Stmt->result);
+  Stmt->LastRowFetched = 0;
+  MADB_STMT_RESET_CURSOR(Stmt);
+
+  MADB_StmtCloseRefCursor(Stmt);
+
+  if (Stmt->lastRefCursor < Stmt->maxRefCursor) {
+    Stmt->lastRefCursor++;
+  }
+  if (Stmt->lastRefCursor >= Stmt->maxRefCursor) {
+    Stmt->lastRefCursor = -1;
+    Stmt->maxRefCursor = 0;
+    ret = SQL_NO_DATA_FOUND;
+  }
+  return ret;
+}
+
 /* {{{ MADB_StmtMoreResults */
 SQLRETURN MADB_StmtMoreResults(MADB_Stmt *Stmt)
 {
   SQLRETURN ret= SQL_SUCCESS;
+
+  // RefCursor
+  if (IsStmtRefCursor(Stmt)) {
+    return MADB_StmtMoreResultsRefCursor(Stmt);
+  }
 
   if (!Stmt->stmt)
   {

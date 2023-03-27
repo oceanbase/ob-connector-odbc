@@ -41,12 +41,15 @@ SQLRETURN MADB_StmtColumnPrivileges(MADB_Stmt *Stmt, char *CatalogName, SQLSMALL
     p+= _snprintf(p, MAX_CATALOG_SQLLEN,
       "SELECT AO.OWNER AS TABLE_SCHEMA, NULL AS TABLE_CAT,AO.OBJECT_NAME AS TABLE_NAME, NULL AS COLUMN_NAME, "
       " NULL AS GRANTOR, NULL AS GRANTEE, NULL AS PRIVILEGE, AO.GENERATED AS IS_GRANTABLE "
-      "FROM ALL_OBJECTS AO WHERE AO.OBJECT_TYPE= 'TABLE' AND  AO.OBJECT_NAME = '%s' ",TableName);
+      "FROM ALL_OBJECTS AO WHERE AO.OBJECT_TYPE= 'TABLE' ");
     
+    p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), " AND AO.OWNER IN SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') ");
     if (SchemaName && SchemaName[0])
       p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), " AND  AO.OWNER LIKE '%s' ", SchemaName);
-    else 
-      p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), " AND AO.OWNER IN SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') ");
+
+    if (TableName && TableName[0])
+      p += _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), " AND  AO.OBJECT_NAME = '%s' ", TableName);
+
     p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr)," ORDER BY TABLE_SCHEMA, TABLE_NAME");
   } else {
     p+= _snprintf(p, MAX_CATALOG_SQLLEN, "SELECT TABLE_SCHEMA AS TABLE_CAT, NULL as TABLE_SCHEM, TABLE_NAME,"
@@ -79,13 +82,16 @@ SQLRETURN MADB_StmtTablePrivileges(MADB_Stmt *Stmt, char *CatalogName, SQLSMALLI
   if(IS_ORACLE_MODE(Stmt)) {
     p += _snprintf(p, MAX_CATALOG_SQLLEN,"SELECT AO.OWNER AS TABLE_SCHEMA, NULL AS TABLE_CAT,AO.OBJECT_NAME AS TABLE_NAME, "
                   "NULL AS COLUMN_NAME,NULL AS GRANTOR, NULL as GRANTEE, NULL as PRIVILEGE, AO.GENERATED AS IS_GRANTABLE "
-                  "FROM ALL_OBJECTS AO WHERE AO.OBJECT_TYPE = 'TABLE' AND  AO.OBJECT_NAME = '%s'", TableName);
+                  "FROM ALL_OBJECTS AO WHERE AO.OBJECT_TYPE = 'TABLE' ");
     
+    p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), " AND AO.OWNER IN SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') ");
     if (SchemaName && SchemaName[0])
       p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), " AND  AO.OWNER LIKE '%s' ", SchemaName);
-    else 
-      p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), " AND AO.OWNER IN SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') ");
-     p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), " ORDER BY TABLE_SCHEMA, TABLE_NAME");
+
+    //if (TableName &&TableName[0])
+    //  p += _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), " AND  AO.OBJECT_NAME = '%s' ", TableName);
+
+    p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), " ORDER BY TABLE_SCHEMA, TABLE_NAME");
   } else {
     p += _snprintf(p, MAX_CATALOG_SQLLEN, "SELECT TABLE_SCHEMA AS TABLE_CAT, NULL AS TABLE_SCHEM, TABLE_NAME, "
                   "NULL AS GRANTOR, GRANTEE, PRIVILEGE_TYPE AS PRIVILEGE, IS_GRANTABLE "
@@ -131,6 +137,7 @@ SQLRETURN MADB_StmtTables(MADB_Stmt *Stmt, char *CatalogName, SQLSMALLINT Catalo
   ADJUST_LENGTH(SchemaName, SchemaNameLength);
   ADJUST_LENGTH(TableName, TableNameLength);
   ADJUST_LENGTH(TableType, TableTypeLength);
+
   if(IS_ORACLE_MODE(Stmt)) {
     MADB_InitDynamicString(&StmtStr, "SELECT NULL AS TABLE_CAT, AO.OWNER AS TABLE_SCHEM,AO.OBJECT_NAME AS TABLE_NAME,AO.OBJECT_TYPE AS TABLE_TYPE,ATC.COMMENTS AS REMARKS FROM ALL_OBJECTS AO, ALL_TAB_COMMENTS ATC WHERE AO.OWNER LIKE ",8192,521);
     MADB_DynstrAppend(&StmtStr, "'");
@@ -168,125 +175,117 @@ SQLRETURN MADB_StmtTables(MADB_Stmt *Stmt, char *CatalogName, SQLSMALLINT Catalo
       MADB_DynstrAppend(&StmtStr, " AND AO.OBJECT_TYPE IN ('SYNONYM','TABLE','VIEW') ");
     }
     MADB_DynstrAppend(&StmtStr, " ORDER BY TABLE_TYPE, TABLE_SCHEM, TABLE_NAME");
-
-    MDBUG_C_PRINT(Stmt->Connection, "SQL Statement: %s", StmtStr.str);
-    ret= Stmt->Methods->ExecDirect(Stmt, StmtStr.str, SQL_NTS);
-    MADB_DynstrFree(&StmtStr);
-    MDBUG_C_RETURN(Stmt->Connection, ret, &Stmt->Error);
-  }
-
-  if (CatalogNameLength > 64 || TableNameLength > 64)
-  {
-    MADB_SetError(&Stmt->Error, MADB_ERR_HY090, "Table and catalog names are limited to 64 chars", 0);
-    return Stmt->Error.ReturnValue;
-  }
-
-  /* SQL_ALL_CATALOGS 
-     If CatalogName is SQL_ALL_CATALOGS and SchemaName and TableName are empty strings, 
-     the result set contains a list of valid catalogs for the data source. 
-     (All columns except the TABLE_CAT column contain NULLs
-  */
-  if (CatalogName && CatalogNameLength && TableName != NULL && !TableNameLength &&
-    SchemaName != NULL && SchemaNameLength == 0 && !strcmp(CatalogName, SQL_ALL_CATALOGS))
-  {
-    MADB_InitDynamicString(&StmtStr, "SELECT SCHEMA_NAME AS TABLE_CAT, CONVERT(NULL,CHAR(64)) AS TABLE_SCHEM, "
-                                  "CONVERT(NULL,CHAR(64)) AS TABLE_NAME, NULL AS TABLE_TYPE, NULL AS REMARKS "
-                                  "FROM INFORMATION_SCHEMA.SCHEMATA "
-                                  "GROUP BY SCHEMA_NAME ORDER BY SCHEMA_NAME",
-                                  8192, 512);
-  }
-  /* SQL_ALL_TABLE_TYPES
-     If TableType is SQL_ALL_TABLE_TYPES and CatalogName, SchemaName, and TableName are empty strings, 
-     the result set contains a list of valid table types for the data source. 
-     (All columns except the TABLE_TYPE column contain NULLs.)
-  */
-  else if (CatalogName != NULL && !CatalogNameLength && TableName != NULL && !TableNameLength &&
-    SchemaName != NULL && SchemaNameLength == 0 && TableType && TableTypeLength &&
-            !strcmp(TableType, SQL_ALL_TABLE_TYPES))
-  {
-    MADB_InitDynamicString(&StmtStr, "SELECT NULL AS TABLE_CAT, NULL AS TABLE_SCHEM, "
-                                  "NULL AS TABLE_NAME, 'TABLE' AS TABLE_TYPE, NULL AS REMARKS "
-                                  "FROM DUAL "
-                                  "UNION "
-                                  "SELECT NULL, NULL, NULL, 'VIEW', NULL FROM DUAL "
-                                  "UNION "
-                                  "SELECT NULL, NULL, NULL, 'SYSTEM VIEW', NULL FROM DUAL",
-                                  8192, 512); 
-  }
-  /* Since we treat our databases as catalogs, the only acceptable value for schema is NULL or "%"
-     if that is not the special case of call for schemas list. Otherwise we return empty resultset*/
-  else if (SchemaName &&
-    ((!strcmp(SchemaName,SQL_ALL_SCHEMAS) && CatalogName && CatalogNameLength == 0 && TableName && TableNameLength == 0) ||
-      strcmp(SchemaName, SQL_ALL_SCHEMAS)))
-  {
-    MADB_InitDynamicString(&StmtStr, "SELECT NULL AS TABLE_CAT, NULL AS TABLE_SCHEM, "
-      "NULL AS TABLE_NAME, NULL AS TABLE_TYPE, NULL AS REMARKS "
-      "FROM DUAL WHERE 1=0", 8192, 512);
-  }
-  else
-  {
-    MADB_InitDynamicString(&StmtStr, "SELECT TABLE_SCHEMA AS TABLE_CAT, NULL AS TABLE_SCHEM, TABLE_NAME, "
-                                  "if(TABLE_TYPE='BASE TABLE','TABLE',TABLE_TYPE) AS TABLE_TYPE ,"
-                                  "TABLE_COMMENT AS REMARKS FROM INFORMATION_SCHEMA.TABLES WHERE 1=1 ",
-                                  8192, 512);
-    if (Stmt->Options.MetadataId== SQL_TRUE)
+  } else {
+    if (CatalogNameLength > 64 || TableNameLength > 64)
     {
-      strcpy(Quote, "`");
+      MADB_SetError(&Stmt->Error, MADB_ERR_HY090, "Table and catalog names are limited to 64 chars", 0);
+      return Stmt->Error.ReturnValue;
+    }
+
+    /* SQL_ALL_CATALOGS 
+       If CatalogName is SQL_ALL_CATALOGS and SchemaName and TableName are empty strings, 
+       the result set contains a list of valid catalogs for the data source. 
+       (All columns except the TABLE_CAT column contain NULLs
+    */
+    if (CatalogName && CatalogNameLength && TableName != NULL && !TableNameLength &&
+      SchemaName != NULL && SchemaNameLength == 0 && !strcmp(CatalogName, SQL_ALL_CATALOGS))
+    {
+      MADB_InitDynamicString(&StmtStr, "SELECT SCHEMA_NAME AS TABLE_CAT, CONVERT(NULL,CHAR(64)) AS TABLE_SCHEM, "
+                                    "CONVERT(NULL,CHAR(64)) AS TABLE_NAME, NULL AS TABLE_TYPE, NULL AS REMARKS "
+                                    "FROM INFORMATION_SCHEMA.SCHEMATA "
+                                    "GROUP BY SCHEMA_NAME ORDER BY SCHEMA_NAME",
+                                    8192, 512);
+    }
+    /* SQL_ALL_TABLE_TYPES
+       If TableType is SQL_ALL_TABLE_TYPES and CatalogName, SchemaName, and TableName are empty strings, 
+       the result set contains a list of valid table types for the data source. 
+       (All columns except the TABLE_TYPE column contain NULLs.)
+    */
+    else if (CatalogName != NULL && !CatalogNameLength && TableName != NULL && !TableNameLength &&
+      SchemaName != NULL && SchemaNameLength == 0 && TableType && TableTypeLength &&
+              !strcmp(TableType, SQL_ALL_TABLE_TYPES))
+    {
+      MADB_InitDynamicString(&StmtStr, "SELECT NULL AS TABLE_CAT, NULL AS TABLE_SCHEM, "
+                                    "NULL AS TABLE_NAME, 'TABLE' AS TABLE_TYPE, NULL AS REMARKS "
+                                    "FROM DUAL "
+                                    "UNION "
+                                    "SELECT NULL, NULL, NULL, 'VIEW', NULL FROM DUAL "
+                                    "UNION "
+                                    "SELECT NULL, NULL, NULL, 'SYSTEM VIEW', NULL FROM DUAL",
+                                    8192, 512); 
+    }
+    /* Since we treat our databases as catalogs, the only acceptable value for schema is NULL or "%"
+       if that is not the special case of call for schemas list. Otherwise we return empty resultset*/
+    else if (SchemaName &&
+      ((!strcmp(SchemaName,SQL_ALL_SCHEMAS) && CatalogName && CatalogNameLength == 0 && TableName && TableNameLength == 0) ||
+        strcmp(SchemaName, SQL_ALL_SCHEMAS)))
+    {
+      MADB_InitDynamicString(&StmtStr, "SELECT NULL AS TABLE_CAT, NULL AS TABLE_SCHEM, "
+        "NULL AS TABLE_NAME, NULL AS TABLE_TYPE, NULL AS REMARKS "
+        "FROM DUAL WHERE 1=0", 8192, 512);
     }
     else
     {
-      strcpy(Quote, "'");
-    }
-
-    if (CatalogName != NULL)
-    {
-      MADB_DynstrAppend(&StmtStr, " AND TABLE_SCHEMA ");
-      MADB_DynstrAppend(&StmtStr, "LIKE ");
-      MADB_DynstrAppend(&StmtStr, Quote);
-      MADB_DynstrAppend(&StmtStr, CatalogName);
-      MADB_DynstrAppend(&StmtStr, Quote);
-    }
-    else if (Stmt->Connection->Environment->AppType == ATypeMSAccess)
-    {
-      MADB_DynstrAppend(&StmtStr, " AND TABLE_SCHEMA=DATABASE()");
-    }
-
-    if (TableName && TableNameLength)
-    {
-      MADB_DynstrAppend(&StmtStr, " AND TABLE_NAME LIKE ");
-      MADB_DynstrAppend(&StmtStr, Quote);
-      MADB_DynstrAppend(&StmtStr, TableName);
-      MADB_DynstrAppend(&StmtStr, Quote);
-    }
-    if (TableType && TableTypeLength && strcmp(TableType, SQL_ALL_TABLE_TYPES) != 0)
-    {
-      unsigned int i;
-      char *myTypes[3]= {"TABLE", "VIEW", "SYNONYM"};
-      MADB_DynstrAppend(&StmtStr, " AND TABLE_TYPE IN (''");
-      for (i= 0; i < 3; i++)
+      MADB_InitDynamicString(&StmtStr, "SELECT TABLE_SCHEMA AS TABLE_CAT, NULL AS TABLE_SCHEM, TABLE_NAME, "
+                                    "if(TABLE_TYPE='BASE TABLE','TABLE',TABLE_TYPE) AS TABLE_TYPE ,"
+                                    "TABLE_COMMENT AS REMARKS FROM INFORMATION_SCHEMA.TABLES WHERE 1=1 ",
+                                    8192, 512);
+      if (Stmt->Options.MetadataId== SQL_TRUE)
       {
-        if (strstr(TableType, myTypes[i]))
+        strcpy(Quote, "`");
+      }
+      else
+      {
+        strcpy(Quote, "'");
+      }
+
+      if (CatalogName != NULL)
+      {
+        MADB_DynstrAppend(&StmtStr, " AND TABLE_SCHEMA ");
+        MADB_DynstrAppend(&StmtStr, "LIKE ");
+        MADB_DynstrAppend(&StmtStr, Quote);
+        MADB_DynstrAppend(&StmtStr, CatalogName);
+        MADB_DynstrAppend(&StmtStr, Quote);
+      }
+      else if (Stmt->Connection->Environment->AppType == ATypeMSAccess)
+      {
+        MADB_DynstrAppend(&StmtStr, " AND TABLE_SCHEMA=DATABASE()");
+      }
+
+      if (TableName && TableNameLength)
+      {
+        MADB_DynstrAppend(&StmtStr, " AND TABLE_NAME LIKE ");
+        MADB_DynstrAppend(&StmtStr, Quote);
+        MADB_DynstrAppend(&StmtStr, TableName);
+        MADB_DynstrAppend(&StmtStr, Quote);
+      }
+      if (TableType && TableTypeLength && strcmp(TableType, SQL_ALL_TABLE_TYPES) != 0)
+      {
+        unsigned int i;
+        char *myTypes[3]= {"TABLE", "VIEW", "SYNONYM"};
+        MADB_DynstrAppend(&StmtStr, " AND TABLE_TYPE IN (''");
+        for (i= 0; i < 3; i++)
         {
-          if (strstr(myTypes[i], "TABLE"))
-            MADB_DynstrAppend(&StmtStr, ", 'BASE TABLE'");
-          else
+          if (strstr(TableType, myTypes[i]))
           {
-            MADB_DynstrAppend(&StmtStr, ", '");
-            MADB_DynstrAppend(&StmtStr, myTypes[i]);
-            MADB_DynstrAppend(&StmtStr, "'");
+            if (strstr(myTypes[i], "TABLE"))
+              MADB_DynstrAppend(&StmtStr, ", 'BASE TABLE'");
+            else
+            {
+              MADB_DynstrAppend(&StmtStr, ", '");
+              MADB_DynstrAppend(&StmtStr, myTypes[i]);
+              MADB_DynstrAppend(&StmtStr, "'");
+            }
           }
         }
+        MADB_DynstrAppend(&StmtStr, ") ");
       }
-      MADB_DynstrAppend(&StmtStr, ") ");
+      MADB_DynstrAppend(&StmtStr, " ORDER BY TABLE_SCHEMA, TABLE_NAME, TABLE_TYPE");
     }
-    MADB_DynstrAppend(&StmtStr, " ORDER BY TABLE_SCHEMA, TABLE_NAME, TABLE_TYPE");
   }
   MDBUG_C_PRINT(Stmt->Connection, "SQL Statement: %s", StmtStr.str);
-
-  ret= Stmt->Methods->ExecDirect(Stmt, StmtStr.str, SQL_NTS);
-
+  ret = Stmt->Methods->ExecDirect(Stmt, StmtStr.str, SQL_NTS);
   MADB_DynstrFree(&StmtStr);
-
   MDBUG_C_RETURN(Stmt->Connection, ret, &Stmt->Error);
 }
 /* }}} */
@@ -315,15 +314,18 @@ SQLRETURN MADB_StmtStatistics(MADB_Stmt *Stmt, char *CatalogName, SQLSMALLINT Na
     MADB_SetError(&Stmt->Error, MADB_ERR_HY009, "Tablename is required", 0);
     return Stmt->Error.ReturnValue;
   }
+
   if(IS_ORACLE_MODE(Stmt)) {
     p+= _snprintf(p, MAX_CATALOG_SQLLEN,"SELECT NULL AS TABLE_CAT,AIC.TABLE_OWNER AS TABLE_SCHEM,AIC.TABLE_NAME, 0 AS NON_UNIQUE,(SELECT USER FROM DUAL) AS INDEX_QUALIFIER,AIC.INDEX_NAME, %d  AS TYPE, AIC.COLUMN_POSITION AS ORDINAL_POSITION,"
-      " COLUMN_NAME,DECODE(DESCEND,'ASC','A','DESC','D') AS ASC_OR_DESC,0 AS CARDINALITY, NULL AS PAGES,NULL AS FILTER_CONDITION FROM ALL_IND_COLUMNS AIC WHERE AIC.TABLE_NAME = '",SQL_INDEX_OTHER);
+      " COLUMN_NAME,DECODE(DESCEND,'ASC','A','DESC','D') AS ASC_OR_DESC,0 AS CARDINALITY, NULL AS PAGES,NULL AS FILTER_CONDITION FROM ALL_IND_COLUMNS AIC ",SQL_INDEX_OTHER);
     
-    p+= _snprintf(p, MAX_CATALOG_SQLLEN- strlen(StmtStr), "%s' ", TableName);
-    if (CatalogName && CatalogName[0])
-      p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), " AND AIC.TABLE_OWNER LIKE '%s' ", CatalogName);
+    if (SchemaName && SchemaName[0])
+      p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), "WHERE AIC.TABLE_OWNER LIKE '%s' ", SchemaName);
     else
-      p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), " AND AIC.TABLE_OWNER IN SYS_CONTEXT('USERENV','CURRENT_SCHEMA') ");
+      p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), "WHERE AIC.TABLE_OWNER IN SYS_CONTEXT('USERENV','CURRENT_SCHEMA') ");
+
+    if (TableName && TableName[0])
+      p += _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), "AND AIC.TABLE_NAME = '%s' ", TableName);
   } else {
     p+= _snprintf(p, MAX_CATALOG_SQLLEN, "SELECT TABLE_SCHEMA AS TABLE_CAT, NULL AS TABLE_SCHEM, TABLE_NAME, "
       "NON_UNIQUE, NULL AS INDEX_QUALIFIER, INDEX_NAME, "
@@ -445,10 +447,10 @@ SQLRETURN MADB_StmtColumns(MADB_Stmt *Stmt,
     ADJUST_LENGTH(TableName, NameLength3);
     ADJUST_LENGTH(ColumnName, NameLength4);
     MADB_DynstrAppend(&StmtStr, " WHERE ATC.owner LIKE ") ;
-    if (CatalogName)
+    if (SchemaName)
     {
       if (MADB_DynstrAppend(&StmtStr, "'") ||
-        MADB_DynstrAppendMem(&StmtStr, CatalogName, NameLength1) ||
+        MADB_DynstrAppendMem(&StmtStr, SchemaName, NameLength2) ||
         MADB_DynstrAppend(&StmtStr, "' "))
         goto dynerror;
     } else {
@@ -575,19 +577,15 @@ SQLRETURN MADB_StmtProcedureColumns(MADB_Stmt *Stmt, char *CatalogName, SQLSMALL
     
     p+=  _snprintf(p, MAX_CATALOG_SQLLEN, MADB_PROCEDURE_COLUMNS_ORACLE);
     
-    if (CatalogName)
-      p+= _snprintf(p, Length - strlen(StmtStr), "WHERE  AG.OWNER  = '%s' ", CatalogName);
+    if (SchemaName)
+      p+= _snprintf(p, Length - strlen(StmtStr), "WHERE  AG.OWNER  = '%s' ", SchemaName);
     else
       p+= _snprintf(p, Length - strlen(StmtStr), "WHERE  AG.OWNER = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA')   ");
+
     if (ProcName && ProcName[0])
-      p+= _snprintf(p, Length - strlen(StmtStr), "AND AG.OBJECT_NAME LIKE  '%s' ", ProcName);
-    if (ColumnName)
-    {
-      if (ColumnName[0])
-      {
-        p+= _snprintf(p, Length- strlen(StmtStr), "AND ARGUMENT_NAME  LIKE '%s' ", ColumnName);
-      }
-    }
+      p+= _snprintf(p, Length - strlen(StmtStr), "AND AG.PROCEDURE_NAME LIKE  '%s' ESCAPE '\\' ", ProcName);//MADB_PROCEDURE_COLUMNS_ORACLE
+    if (ColumnName && ColumnName[0])
+      p+= _snprintf(p, Length- strlen(StmtStr), "AND ARGUMENT_NAME  LIKE '%s' ", ColumnName);
   } else {
     size_t Length= strlen(MADB_PROCEDURE_COLUMNS(Stmt)) + MAX_CATALOG_SQLLEN;
     unsigned int OctetsPerChar= Stmt->Connection->Charset.cs_info->char_maxlen > 0 ? Stmt->Connection->Charset.cs_info->char_maxlen: 1;
@@ -647,22 +645,17 @@ SQLRETURN MADB_StmtPrimaryKeys(MADB_Stmt *Stmt, char *CatalogName, SQLSMALLINT N
   if(IS_ORACLE_MODE(Stmt)) {
     p+= _snprintf(p, MAX_CATALOG_SQLLEN,"SELECT NULL AS TABLE_CAT, ACC.OWNER AS TABLE_SCHEM, ACC.TABLE_NAME, "
                   " ACC.COLUMN_NAME , ACC.POSITION  AS KEY_SEQ, ACC.CONSTRAINT_NAME AS PK_NAME  FROM ALL_CONS_COLUMNS  ACC, ALL_CONSTRAINTS AC "
-                  " WHERE AC.CONSTRAINT_TYPE  = 'P' AND AC.TABLE_NAME = ");
+                  " WHERE AC.CONSTRAINT_TYPE  = 'P' ");
     
-    if (TableName)
-    {
-      p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), "'%s' ", TableName);
-    }
-
-    if (CatalogName && CatalogName[0])
-    {
-      p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), " AND AC.OWNER LIKE '%s' ", CatalogName);
-    }
+    if (SchemaName && SchemaName[0])
+      p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), " AND AC.OWNER LIKE '%s' ", SchemaName);
     else
-    {
-      p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), " AND AC.OWNER LIKE '%%'");
-    }
-    p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), " escape '/' AND AC.constraint_name = ACC.constraint_name  AND AC.table_name = ACC.table_name AND AC.owner = ACC.owner ORDER BY key_seq");
+      p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), " AND AC.OWNER LIKE '%%' ");
+
+    if (TableName)
+      p += _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), " AND AC.TABLE_NAME = '%s' ", TableName);
+
+    p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), " AND AC.constraint_name = ACC.constraint_name  AND AC.table_name = ACC.table_name AND AC.owner = ACC.owner ORDER BY key_seq");
   } else {
     p+= _snprintf(p, MAX_CATALOG_SQLLEN, "SELECT TABLE_SCHEMA AS TABLE_CAT, NULL AS TABLE_SCHEM, "
                   "TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION KEY_SEQ, "
@@ -732,7 +725,7 @@ SQLRETURN MADB_StmtSpecialColumns(MADB_Stmt *Stmt, SQLUSMALLINT IdentifierType,
       p += _snprintf(p, Length, MADB_SPECIAL_COLUMNS_ORACLE);
     }
     
-    if (CatalogName && CatalogName[0])
+    if (SchemaName && SchemaName[0])
       p+= _snprintf(p, Length - strlen(StmtStr), " AND ATC.OWNER LIKE '%s' ", CatalogName);
 
     if (TableName && TableName[0])
@@ -809,32 +802,17 @@ SQLRETURN MADB_StmtProcedures(MADB_Stmt *Stmt, char *CatalogName, SQLSMALLINT Na
   MADB_CLEAR_ERROR(&Stmt->Error);
 
   if(IS_ORACLE_MODE(Stmt)) { 
-    p+= _snprintf(p, MAX_CATALOG_SQLLEN, 
-                  "SELECT SAR.OWNER AS PROCEDURE_CAT,"
-                  "NULL AS PROCEDURE_SCHEM,"
-                  "SAR.OBJECT_NAME AS PROCEDURE_NAME,"
-                  "NULL AS NUM_INPUT_PARAMS,"
-                  "NULL AS NUM_OUTPUT_PARAMS,"
-                  "NULL AS NUM_RESULT_SETS,"
-                  "NULL AS REMARKS,"
-                  "CASE WHEN SAR.OBJECT_TYPE = 'FUNCTION' then 2 "
-                  "WHEN SAR.OBJECT_TYPE= 'PROCEDURE' THEN 1 "
-                  "ELSE 0 END AS PROCEDURE_TYPE "
-                  "FROM SYS.ALL_PROCEDURES SAR ");
+    p+= _snprintf(p, MAX_CATALOG_SQLLEN, MADB_PROCEDURE_ORACLE);
     
-    if (ProcName && ProcName[0]) {
-      p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), "WHERE PROCEDURE_NAME LIKE '%s' ", ProcName);
-      if (CatalogName && CatalogName[0])
-        p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), "AND OWNER LIKE '%s' ", CatalogName);
-      else
-        p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), "AND OWNER IN SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') ");
-    } else {
-      if (CatalogName && CatalogName[0])
-        p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), "WHERE OWNER LIKE '%s' ", CatalogName);
-      else
-        p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), "WHERE OWNER IN SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') ");
-    }
-    p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr),"AND  OBJECT_TYPE = 'PROCEDURE' OR OBJECT_TYPE = 'FUNCTION'") ;
+    if (SchemaName && SchemaName[0])
+      p += _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), "WHERE OWNER LIKE '%s' ", SchemaName);
+    else
+      p += _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), "WHERE OWNER IN SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') ");
+
+    if (ProcName && ProcName[0])
+      p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), "AND PROCEDURE_NAME2 LIKE '%s' ", ProcName);
+
+    p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr),"AND (OBJECT_TYPE = 'PROCEDURE' OR OBJECT_TYPE = 'FUNCTION' OR OBJECT_TYPE= 'PACKAGE')") ;
   } else {
     p+= _snprintf(p, MAX_CATALOG_SQLLEN, "SELECT ROUTINE_SCHEMA AS PROCEDURE_CAT, NULL AS PROCEDURE_SCHEM, "
                   "SPECIFIC_NAME PROCEDURE_NAME, NULL NUM_INPUT_PARAMS, "
@@ -891,7 +869,8 @@ SQLRETURN MADB_StmtForeignKeys(MADB_Stmt *Stmt, char *PKCatalogName, SQLSMALLINT
     MADB_InitDynamicString(&StmtStr, "SELECT NULL AS PKTABLE_CAT, PRIMARY_KEY.OWNER AS PKTABLE_SCHEM, "
       " PRIMARY_KEY.TABLE_NAME AS PKTABLE_NAME, PRIMARY_CONS.COLUMN_NAME AS PKCOLUMN_NAME, NULL AS FKTABLE_CAT, "
       " FOREIGN_KEY.R_OWNER AS FKTABLE_SCHEM, FOREIGN_KEY.TABLE_NAME AS FKTABLE_NAME, FOREIGN_CONS.COLUMN_NAME AS FKCOLUMN_NAME, "
-      " 1 AS KEY_SEQ, 3 AS UPDATE_RULE, 3 AS DELETE_RULE, PRIMARY_KEY.CONSTRAINT_NAME AS PK_NAME, 7 as DEFERRABILITY "
+      " 1 AS KEY_SEQ, NULL AS UPDATE_RULE, 3 AS DELETE_RULE, "
+      " FOREIGN_KEY.CONSTRAINT_NAME AS FK_NAME, PRIMARY_KEY.CONSTRAINT_NAME AS PK_NAME, NULL as DEFERRABILITY "
       " FROM DBA_CONSTRAINTS PRIMARY_KEY , DBA_CONSTRAINTS FOREIGN_KEY, DBA_CONS_COLUMNS PRIMARY_CONS, DBA_CONS_COLUMNS FOREIGN_CONS "
       " WHERE PRIMARY_KEY.OWNER = FOREIGN_KEY.R_OWNER AND PRIMARY_KEY.CONSTRAINT_NAME = FOREIGN_KEY.R_CONSTRAINT_NAME "
       " AND FOREIGN_KEY.R_OWNER = FOREIGN_CONS.OWNER AND FOREIGN_KEY.CONSTRAINT_NAME = FOREIGN_CONS.CONSTRAINT_NAME "

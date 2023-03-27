@@ -41,13 +41,9 @@
   https://msdn.microsoft.com/en-us/library/ms715433%28v=vs.85%29.aspx
   http://www.gnu.org/licenses/
   https://github.com/oceanbase/obconnector-c.git
-  yiming.czw@taobao.com
-  jianliang.yjl@antfin.com
   michael.bell@web.de
-  guangshu.wgs@antfin.com
   http://www.gnu.org/licenses
   https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1
-  yiming.czw@taobao.com
   tromey@cygnus.com
   bug-automake@gnu.org
   automake-patches@gnu.org

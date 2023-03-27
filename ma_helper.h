@@ -78,7 +78,7 @@ BOOL          MADB_IsIntType    (SQLSMALLINT ConciseType);
 /* For multistatement picks stmt handler pointed by stored index, and sets it as "current" stmt handler */
 void          MADB_InstallStmt  (MADB_Stmt *Stmt, MYSQL_STMT *stmt);
 
-
+BOOL          IsStmtRefCursor(MADB_Stmt *Stmt);
 BOOL          IsStmtNossps(MADB_Stmt *Stmt);
 unsigned int  StmtFieldCount(MADB_Stmt *Stmt);
 unsigned long long StmtNumRows(MADB_Stmt *Stmt);
@@ -94,6 +94,9 @@ long double   MyStrtold(const char *nptr, char **endptr);
 BOOL          IsDataTruncate(MADB_Stmt *Stmt, MADB_DescRecord *ArdRecord, void* Src, long SrcLen);
 BOOL          GetDataByString(MADB_Stmt *Stmt, MADB_DescRecord *ArdRecord, void* Src, SQLLEN SrcLen, void* Dst, SQLLEN DstLen);
 BOOL GetBinaryData(MADB_Stmt *Stmt, unsigned char* Dst, unsigned long DstLen, unsigned char* Src, unsigned long SrcLen, unsigned long *offset);
+
+void          FormatCallOracleProcedure(char** buf, SQLINTEGER* len);
+char* GetInsertQueryHead(MADB_QUERY* Query);
 
 
 /* for dummy binding */

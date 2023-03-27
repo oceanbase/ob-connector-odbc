@@ -517,6 +517,38 @@ SQLRETURN MADB_DbcFree(MADB_Dbc *Connection)
 }
 /* }}} */
 
+static void MADB_Dbc_GetVersion(MADB_Dbc *Connection)
+{
+  /* Only one thread calls this, so no synchronization is needed */
+  MYSQL_RES *result;
+  MYSQL *con = Connection->mariadb;
+
+  /* "limit 1" is protection against SQL_SELECT_LIMIT=0 */
+  char const *sql = Connection->OracleMode ? "select @@version_comment, @@version from dual where rownum <= 1" : "select @@version_comment, @@version limit 1";
+  if (con && !mysql_query(con, sql) && (result = mysql_use_result(con)))
+  {
+    MYSQL_ROW cur = mysql_fetch_row(result);
+    if (cur && cur[0] && cur[1])
+    {
+      // only get ob server version
+      if (strlen(cur[0]) > 9 && strncasecmp(cur[0], "OceanBase", 9) == 0)
+      {
+        int len = 0;
+        char* tmp = strstr(cur[1], "OceanBase-v");
+        if (tmp) {
+          tmp += 11;
+          len = strlen(tmp);
+          len = len > sizeof(Connection->version) ? sizeof(Connection->version) : len;
+          memset(Connection->version, 0, sizeof(Connection->version));
+          memcpy(Connection->version, tmp, len);
+        }
+      }
+    }
+    mysql_free_result(result);
+  }
+  return;
+}
+
 /* {{{ MADB_Dbc_GetCurrentDB */
 SQLRETURN MADB_Dbc_GetCurrentDB(MADB_Dbc *Connection, SQLPOINTER CurrentDB, SQLINTEGER CurrentDBLength, 
                                 SQLSMALLINT *StringLengthPtr, my_bool isWChar) 
@@ -909,7 +941,7 @@ SQLRETURN MADB_DbcConnectDB(MADB_Dbc *Connection,
     goto err;
 
   MADB_SetCapabilities(Connection, mysql_get_server_version(Connection->mariadb));
-
+  MADB_Dbc_GetVersion(Connection);
   goto end;
 
 err:
@@ -1255,21 +1287,8 @@ SQLRETURN MADB_DbcGetInfo(MADB_Dbc *Dbc, SQLUSMALLINT InfoType, SQLPOINTER InfoV
       Dbc->OracleMode ? "Oracle" : "MySQL", SQL_NTS, &Dbc->Error);
     break;
   case SQL_DBMS_VER:
-    {
-      char Version[13];
-      unsigned long ServerVersion= 0L;
-      
-      if (Dbc->mariadb)
-      {
-        ServerVersion= mysql_get_server_version(Dbc->mariadb);
-        _snprintf(Version, sizeof(Version), "%02u.%02u.%06u", ServerVersion / 10000,
-                    (ServerVersion % 10000) / 100, ServerVersion % 100);
-      }
-      else
-        Version[0]= 0;
-      SLen= (SQLSMALLINT)MADB_SetString(isWChar ?  &utf8 : 0, (void *)InfoValuePtr, BUFFER_CHAR_LEN(BufferLength, isWChar), 
-                                       Version[0] ? Version : "", SQL_NTS, &Dbc->Error);
-    }
+    SLen= (SQLSMALLINT)MADB_SetString(isWChar ?  &utf8 : 0, (void *)InfoValuePtr, BUFFER_CHAR_LEN(BufferLength, isWChar), 
+      Dbc->version[0] ? Dbc->version : "", SQL_NTS, &Dbc->Error);
     break;
   case SQL_DDL_INDEX:
      MADB_SET_NUM_VAL(SQLUINTEGER, InfoValuePtr, SQL_DI_CREATE_INDEX | SQL_DI_DROP_INDEX, StringLengthPtr);

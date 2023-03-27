@@ -54,7 +54,7 @@ struct st_ma_desc_fldid MADB_DESC_FLDID[]=
   {SQL_DESC_NUM_PREC_RADIX, {MADB_DESC_RW, MADB_DESC_RW, MADB_DESC_RW, MADB_DESC_READ}},
   {SQL_DESC_OCTET_LENGTH, {MADB_DESC_RW, MADB_DESC_RW, MADB_DESC_RW, MADB_DESC_READ}},
   {SQL_DESC_OCTET_LENGTH_PTR,{MADB_DESC_RW, MADB_DESC_RW, MADB_DESC_NONE, MADB_DESC_NONE}},
-  {SQL_DESC_PARAMETER_TYPE,{MADB_DESC_NONE, MADB_DESC_NONE, MADB_DESC_RW, MADB_DESC_NONE}},
+  {SQL_DESC_PARAMETER_TYPE,{MADB_DESC_NONE, MADB_DESC_NONE, MADB_DESC_RW, MADB_DESC_RW}},
   {SQL_DESC_PRECISION,{MADB_DESC_RW, MADB_DESC_RW, MADB_DESC_RW, MADB_DESC_READ}},
 #if (ODBCVER >= 0x0350)
   {SQL_DESC_ROWVER,{MADB_DESC_NONE, MADB_DESC_NONE, MADB_DESC_READ, MADB_DESC_READ}},
@@ -238,10 +238,19 @@ MADB_SetIrdRecord(MADB_Stmt *Stmt, MADB_DescRecord *Record, MYSQL_FIELD *Field)
     break;
   case MYSQL_TYPE_FLOAT:
     Record->NumPrecRadix= 2;
-    Record->Precision= (SQLSMALLINT)Field->length - 2;
+    if (IS_ORACLE_MODE(Stmt)) {
+      Record->Precision = 7;
+    } else {
+      Record->Precision = (SQLSMALLINT)Field->length - 2;
+    }
     //Record->Scale= Field->decimals;
     break;
   case MYSQL_TYPE_DOUBLE:
+    Record->NumPrecRadix = 10;
+    if (IS_ORACLE_MODE(Stmt)) {
+      Record->Precision = 15;
+    }
+    break;
   case MYSQL_TYPE_TINY:
   case MYSQL_TYPE_SHORT:
   case MYSQL_TYPE_INT24:
@@ -252,8 +261,10 @@ MADB_SetIrdRecord(MADB_Stmt *Stmt, MADB_DescRecord *Record, MYSQL_FIELD *Field)
     break;
   case MYSQL_TYPE_OB_NUMBER_FLOAT:
     Record->Scale = 0;
-    Record->Precision = Field->precision;
     Record->NumPrecRadix = 2;
+    if (IS_ORACLE_MODE(Stmt)) {
+      Record->Precision = (int)(Field->precision*0.30103) + 1;
+    }
     break;
   case MYSQL_TYPE_TIMESTAMP:
   case MYSQL_TYPE_TIME:
@@ -317,6 +328,7 @@ MADB_SetIrdRecord(MADB_Stmt *Stmt, MADB_DescRecord *Record, MYSQL_FIELD *Field)
   case MYSQL_TYPE_OB_UROWID:
   case MYSQL_TYPE_ORA_BLOB:
   case MYSQL_TYPE_ORA_CLOB:
+    Record->DescLength = Record->Length;
     if (Field->flags & BINARY_FLAG)
     {
       Record->LiteralPrefix= "0x";
@@ -879,7 +891,7 @@ SQLRETURN MADB_DescSetField(SQLHDESC DescriptorHandle,
 {
   MADB_Desc *Desc= (MADB_Desc *)DescriptorHandle;
   MADB_DescRecord *DescRecord= NULL;
-  SQLRETURN ret;
+  SQLRETURN ret = SQL_SUCCESS;
   SQL_UNNAMED;
   ret= MADB_DeskCheckFldId(Desc, FieldIdentifier, MADB_DESC_WRITE);
 
@@ -1046,11 +1058,19 @@ SQLRETURN MADB_DescCopyDesc(MADB_Desc *SrcDesc, MADB_Desc *DestDesc)
     for (i= 0; i < DestDesc->Records.elements; ++i)
     {
       MADB_DescRecord *Rec= MADB_DescGetInternalRecord(DestDesc, i, MADB_DESC_READ);
-
       if (Rec != NULL)
       {
-        Rec->InternalBuffer= NULL;
+        Rec->InternalBuffer = NULL;
+        Rec->CatalogName = NULL;
+        Rec->TableName = NULL;
+        Rec->ColumnName = NULL;
+        Rec->BaseTableName = NULL;
+        Rec->BaseColumnName = NULL;
+        Rec->BaseCatalogName = NULL;
+        Rec->TypeName = NULL;
+        Rec->SchemaName = NULL;
       }
+
     }
   }
 

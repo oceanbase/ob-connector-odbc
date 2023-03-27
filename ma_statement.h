@@ -108,7 +108,10 @@ SQLRETURN    MADB_StmtInit          (MADB_Dbc *Connection, SQLHANDLE *pHStmt);
 SQLUSMALLINT MapColAttributeDescType(SQLUSMALLINT FieldIdentifier);
 MYSQL_RES*   FetchMetadata          (MADB_Stmt *Stmt);
 SQLRETURN    MADB_DoExecute(MADB_Stmt *Stmt, BOOL ExecDirect);
+
 SQLRETURN MADB_GetOutParamsNossps(MADB_Stmt *Stmt, int CurrentOffset);
+SQLRETURN MADB_StmtOpenRefCursor(MADB_Stmt *Stmt, SQLSMALLINT FetchOrientation, SQLLEN FetchOffset);
+SQLRETURN MADB_StmtCloseRefCursor(MADB_Stmt *Stmt);
 
 #define MADB_MAX_CURSOR_NAME 64 * 3 + 1
 #define MADB_CHECK_STMT_HANDLE(a,b)\

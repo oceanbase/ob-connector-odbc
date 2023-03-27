@@ -68,6 +68,9 @@ typedef struct {
   my_bool       AnsiQuotes;
   my_bool       NoBackslashEscape;
   MADB_DynArray ParamPos;
+
+  my_bool       BatchSwitch;
+  unsigned int  BatchMax;
 } MADB_QUERY;
 
 #define PQUERY_UPDATE_LEN(PARSED_QUERY_PTR) (PARSED_QUERY_PTR)->RefinedLength= strlen((PARSED_QUERY_PTR)->RefinedLength)

@@ -173,7 +173,10 @@ BEGIN
     PUSHBUTTON      "Browse",pbPlugindirBrowse,183,51,30,14
 //    CONTROL         "Disable catalog support",IDC_CHECK3,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,15,39,91,10,WS_EX_TRANSPARENT
 //    CONTROL         "Ignore space after function names",IDC_CHECK4,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,15,53,127,10,WS_EX_TRANSPARENT
-    CONTROL         "NO_SSPS", ckNOSSPS, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 16, 64, 107, 10, WS_EX_TRANSPARENT
+    CONTROL         "NO_SSPS", ckNOSSPS, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 16, 64, 50, 10, WS_EX_TRANSPARENT
+    CONTROL         "BatchSwitch", ckBatchSwitch, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 16, 75, 50, 10, WS_EX_TRANSPARENT
+    RTEXT           "BatchMax:", IDC_STATIC, 75, 75, 50, 8, 0, WS_EX_TRANSPARENT
+    EDITTEXT        txtBatchMax, 127, 75, 30, 10, ES_AUTOHSCROLL
 
     PUSHBUTTON      "Cancel",IDCANCEL,178,149,50,14
     PUSHBUTTON      "Next >",PB_NEXT,104,149,50,14

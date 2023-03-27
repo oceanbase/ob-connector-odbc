@@ -343,6 +343,11 @@ struct st_ma_odbc_stmt
   MYSQL_FIELD *fields2;
   MYSQL_ROW row2;
   unsigned long *lengths2;
+
+  MYSQL_STMT  *stmtRefCursor;
+  int lastRefCursor;
+  int maxRefCursor;
+  unsigned int arrayRefCursor[1000];
 };
 
 enum MADB_AppType{
@@ -413,6 +418,7 @@ struct st_ma_odbc_connection
   SQLINTEGER CursorCount;
   char ServerCapabilities;
   my_bool OracleMode;
+  char version[32];
 };
 
 typedef BOOL (__stdcall *PromptDSN)(HWND hwnd, MADB_Dsn *Dsn);

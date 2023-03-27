@@ -1735,6 +1735,15 @@ void MADB_InstallStmt(MADB_Stmt *Stmt, MYSQL_STMT *stmt)
   }
 }
 
+BOOL IsStmtRefCursor(MADB_Stmt *Stmt)
+{
+  BOOL bRet = FALSE;
+  if (Stmt && IS_ORACLE_MODE(Stmt) && Stmt->Connection && Stmt->lastRefCursor>=0 && Stmt->maxRefCursor>0) {
+    bRet = TRUE;
+  }
+  return bRet;
+}
+
 BOOL IsStmtNossps(MADB_Stmt *Stmt)
 {
   BOOL bRet = FALSE;
@@ -1746,7 +1755,13 @@ BOOL IsStmtNossps(MADB_Stmt *Stmt)
 
 unsigned int StmtFieldCount(MADB_Stmt *Stmt)
 {
-  if (IsStmtNossps(Stmt)){
+  if (IsStmtRefCursor(Stmt)) {
+    if (Stmt->stmtRefCursor) {
+      return mysql_stmt_field_count(Stmt->stmtRefCursor);
+    } else {
+      return 0;
+    }
+  } else if (IsStmtNossps(Stmt)){
     if (Stmt->result2){
       return Stmt->result2->field_count;
     } else {
@@ -1759,7 +1774,12 @@ unsigned int StmtFieldCount(MADB_Stmt *Stmt)
 
 unsigned long long StmtNumRows(MADB_Stmt *Stmt)
 {
-  if (IsStmtNossps(Stmt)){
+  if (IsStmtRefCursor(Stmt)) {
+    if (Stmt->stmtRefCursor)
+      return mysql_stmt_num_rows(Stmt->stmtRefCursor);
+    else
+      return 0;
+  } else if (IsStmtNossps(Stmt)){
     if (Stmt->result2)
       return mysql_num_rows(Stmt->result2);
     else
@@ -1780,7 +1800,10 @@ BOOL StmtMoreResults(MADB_Stmt *Stmt)
 
 void StmtFreeResults(MADB_Stmt *Stmt)
 {
-  if (IsStmtNossps(Stmt)) {
+  if (IsStmtRefCursor(Stmt)) {
+    if (Stmt->stmtRefCursor)
+      mysql_stmt_free_result(Stmt->stmtRefCursor);
+  } else if (IsStmtNossps(Stmt)) {
     if (Stmt->result2)
       mysql_free_result(Stmt->result2);
     Stmt->result2 = NULL;
@@ -2108,4 +2131,95 @@ BOOL GetBinaryData(MADB_Stmt *Stmt, unsigned char* Dst, unsigned long DstLen, un
   }
   *offset = j;
   return TRUE;
+}
+
+void FormatCallOracleProcedure(char** buf, SQLINTEGER* len)
+{
+  //example: {call TEST.TEST1.MY_PROC_NAME()}  'TEST1' is package, then must delete 'TEST.'
+  char *p = *buf;
+  char *start = NULL;
+  char *end = NULL;
+  char *pTmp = NULL;
+  SQLINTEGER i = 0;
+  BOOL hasParentheses = 0;  //'()'
+  BOOL hasBraces = 0;   //'{}'
+
+  while (*p==' '||*p=='\t')
+    p++;
+
+  if (*p == '{') {
+    p++;
+    while (*p == ' ' || *p == '\t')
+      p++;
+  }
+  if (strncasecmp(p, "call", 4)==0) {
+    pTmp = p + 4;
+    start = p + 4;
+    if (NULL!=(p=strchr(start, '.'))){
+      end = p + 1;
+      if (NULL ==(p=strchr(end, '.'))){
+        start = NULL;
+        end = NULL;
+      }
+    } else {
+      start = NULL;
+      end = NULL;
+    }
+
+    //{call "TEST"."TEST1.MY_PROC_NAME"()} -> {call      "TEST1.MY_PROC_NAME"()}
+    for (; start && end && end - start > 0; start++) {
+      *start = ' ';
+    }
+
+    //{call      "TEST1.MY_PROC_NAME"()} -> {call       TEST1.MY_PROC_NAME ()}
+    if (pTmp) {
+      p = pTmp;
+      while (*p != '\0') {
+        if (*p == '"')
+          *p = ' ';
+        p++;
+      }
+    }
+
+    //{call      TEST1.MY_PROC_NAME} -> {call      TEST1.MY_PROC_NAME()}
+    p = *buf;
+    i = *len - 1;
+    while(i>0 && !isalpha(p[i])){
+      if (p[i]==')')
+        hasParentheses = 1;
+      if (p[i] == '}')
+        hasBraces = 1;
+      i--;
+    }
+    if (!hasParentheses) {
+      SQLINTEGER srcLen = *len;
+      SQLINTEGER reaLen = srcLen + 3;
+      p = realloc(p, reaLen);
+      for(i = srcLen-1; i>0; i--) {
+        if (p[i] != ' ' && p[i] != '\t' && p[i] !='\r' && p[i] != '\n' && p[i] != '}')
+          break;
+      }
+      p[++i] = '(';
+      p[++i] = ')';
+      if (hasBraces){
+        p[++i] = '}';
+      }
+      p[++i] = 0;
+      *buf = p;
+      *len = strlen(p);
+    }
+  }
+}
+
+char* GetInsertQueryHead(MADB_QUERY* Query)
+{
+  char *pQuery = Query->RefinedText;
+  char *head = strstr(pQuery, "(");
+  if (head) {
+    char *tmp = strstr(head + 1, "(");
+    if (tmp) {
+      head = tmp;
+    }
+  }
+  return head;
 }

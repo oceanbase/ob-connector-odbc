@@ -120,6 +120,8 @@ typedef struct st_madb_dsn
   my_bool Reconnect;
   my_bool MultiStatements;
   my_bool NoSsps;
+  my_bool BatchSwitch;
+  unsigned int BatchMax;
   /* TRUE means "no prompt" */
   my_bool ConnectPrompt;
   char *Socket;
