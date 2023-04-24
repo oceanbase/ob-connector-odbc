@@ -342,7 +342,7 @@ enum enum_madb_query_type MADB_GetQueryType(const char *Token1, const char *Toke
   {
     return MADB_QUERY_DESCRIBE;
   }
-  if (_strnicmp(Token1, "BEGIN", 5) == 0 && _strnicmp(Token2, "NOT", 3) == 0)
+  if (_strnicmp(Token1, "BEGIN", 5) == 0 /*&& _strnicmp(Token2, "NOT", 3) == 0*/)
   {
     return MADB_NOT_ATOMIC_BLOCK;
   }

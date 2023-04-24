@@ -1954,6 +1954,9 @@ SQLRETURN SQL_API SQLNativeSql(SQLHDBC ConnectionHandle,
 {
   MADB_Dbc *Dbc= (MADB_Dbc *)ConnectionHandle;
   SQLINTEGER Length;
+  MADB_DynString str;
+  int len = 0;
+
   if (!Dbc)
     return SQL_INVALID_HANDLE;
   MADB_CLEAR_ERROR(&Dbc->Error);
@@ -1965,10 +1968,14 @@ SQLRETURN SQL_API SQLNativeSql(SQLHDBC ConnectionHandle,
     MADB_SetError(&Dbc->Error, MADB_ERR_01004, NULL, 0);
     return Dbc->Error.ReturnValue;
   }
-  Length= (SQLINTEGER)MADB_SetString(0, OutStatementText, BufferLength, (char *)InStatementText, TextLength1, &Dbc->Error);
+  
+  MADB_InitDynamicString(&str, "", 1024, 1024);
+  FormatNativeSQL(InStatementText, TextLength1, &str);
+  Length = (SQLINTEGER)MADB_SetString(0, OutStatementText, BufferLength, (char *)InStatementText, TextLength1, &Dbc->Error);
   if (TextLength2Ptr)
-    *TextLength2Ptr= Length;
-
+    *TextLength2Ptr = Length;
+  MADB_DynstrFree(&str);
+ 
   MDBUG_C_RETURN(Dbc, Dbc->Error.ReturnValue, &Dbc->Error);
 }
 /* }}} */
@@ -1983,6 +1990,10 @@ SQLRETURN SQL_API SQLNativeSqlW(SQLHDBC ConnectionHandle,
 {
   MADB_Dbc  *Conn=   (MADB_Dbc *)ConnectionHandle;
   SQLINTEGER Length= (TextLength1 == SQL_NTS) ? SqlwcsCharLen(InStatementText, (SQLLEN)-1) : TextLength1;
+  SQLULEN CpLength1 = 0;
+  MADB_DynString str;
+  char *CpStatementText = NULL;
+  int rst = 0;
 
   if (!Conn)
     return SQL_INVALID_HANDLE;
@@ -1993,17 +2004,17 @@ SQLRETURN SQL_API SQLNativeSqlW(SQLHDBC ConnectionHandle,
   if (TextLength2Ptr)
     *TextLength2Ptr= Length;
 
-  if(OutStatementText && BufferLength < Length)
-    MADB_SetError(&Conn->Error, MADB_ERR_01004, NULL, 0);
+  CpStatementText = MADB_ConvertFromWChar(InStatementText, TextLength1, &CpLength1, Conn->ConnOrSrcCharset, NULL);
 
-  if(OutStatementText && BufferLength < Length)
-    MADB_SetError(&Conn->Error, MADB_ERR_01004, NULL, 0);
-  Length= MIN(Length, BufferLength - 1);
-
-  if (OutStatementText && BufferLength)
-  {
-    memcpy(OutStatementText, InStatementText, Length * sizeof(SQLWCHAR));
-    OutStatementText[Length]= 0;
+  if (CpStatementText) {
+    MADB_InitDynamicString(&str, "", 1024, 1024);
+    FormatNativeSQL(CpStatementText, CpLength1, &str);
+    Length = MADB_SetString(&Conn->Charset, OutStatementText, BufferLength, str.str, str.length, &Conn->Error);
+    if (TextLength2Ptr)
+      *TextLength2Ptr = Length * sizeof(SQLWCHAR);
+    MADB_DynstrFree(&str);
+    MADB_FREE(CpStatementText);
+    CpStatementText = NULL;
   }
 
   MDBUG_C_RETURN(Conn, Conn->Error.ReturnValue, &Conn->Error);

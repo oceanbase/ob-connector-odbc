@@ -300,6 +300,10 @@ SET(CPACK_COMPONENTS_ALL_IN_ONE_PACKAGE 1)
 #SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DDBUG_OFF")
 #SET(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -DDBUG_OFF")
 #SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -DDBUG_OFF")
+SET(CMAKE_C_FLAGS_RELEASE " -z noexecstack -z now -pie -fPIC -fstack-protector ")
+SET(CMAKE_CXX_FLAGS_RELEASE " -z noexecstack -z now -pie -fPIC -fstack-protector ")
+SET(CMAKE_C_FLAGS_RELWITHDEBINFO " -z noexecstack -z now -pie -fPIC -fstack-protector ")
+SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO " -z noexecstack -z now -pie -fPIC -fstack-protector ")
 
 
 # We need to determine the last parameter for SQLColAttribute:

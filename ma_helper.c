@@ -21,6 +21,8 @@
 #include <stdint.h>
 
 #define MADB_FIELD_IS_BINARY(_field) ((_field)->charsetnr == BINARY_CHARSETNR)
+#define MADB_TRIM_SPACE(p) while(*p == ' ' || *p == '\t')p++
+#define MADB_TRIM_RIGHT_SPACE(p) while(*p == ' ' || *p == '\t' || *p == '\0'){*p=0;p--;}
 
 void CloseMultiStatements(MADB_Stmt *Stmt)
 {
@@ -2133,31 +2135,62 @@ BOOL GetBinaryData(MADB_Stmt *Stmt, unsigned char* Dst, unsigned long DstLen, un
   return TRUE;
 }
 
-void FormatCallOracleProcedure(char** buf, SQLINTEGER* len)
+char* GetInsertQueryHead(MADB_QUERY* Query)
+{
+  char *pQuery = Query->RefinedText;
+  char *head = strstr(pQuery, "(");
+  if (head) {
+    char *tmp = strstr(head + 1, "(");
+    if (tmp) {
+      head = tmp;
+    }
+  }
+  return head;
+}
+
+int FormatCallSQL(char* sql, SQLINTEGER len, MADB_DynString* str)
 {
   //example: {call TEST.TEST1.MY_PROC_NAME()}  'TEST1' is package, then must delete 'TEST.'
-  char *p = *buf;
   char *start = NULL;
   char *end = NULL;
-  char *pTmp = NULL;
+  char *pCall = NULL;
   SQLINTEGER i = 0;
   BOOL hasParentheses = 0;  //'()'
   BOOL hasBraces = 0;   //'{}'
+  BOOL hasReturn = 0;   //?=call xxx
+  BOOL useBlock = 1;
 
-  while (*p==' '||*p=='\t')
-    p++;
+  char *p = NULL;
+  char *buf = calloc(1, len + 32);
+  if (NULL == buf)
+    return -1;
 
+  p = buf;
+  memcpy(p, sql, len);
+  p = buf + len;
+  MADB_TRIM_RIGHT_SPACE(p);
+  p = buf;
+  MADB_TRIM_SPACE(p);
   if (*p == '{') {
-    p++;
-    while (*p == ' ' || *p == '\t')
-      p++;
+    p++; MADB_TRIM_SPACE(p);
+  }
+  if (*p == '?') { //for function
+    hasReturn = 1;
+    p++; MADB_TRIM_SPACE(p);
+    if (*p == '=') {
+      p++; MADB_TRIM_SPACE(p);
+    }
   }
   if (strncasecmp(p, "call", 4)==0) {
-    pTmp = p + 4;
+    pCall = p + 4;
     start = p + 4;
-    if (NULL!=(p=strchr(start, '.'))){
+    if (NULL != (p = strchr(start, '='))) {
+      //function->{call :1=TEST.packet()}
+      start = p+1;
+    }
+    if (NULL != (p = strchr(start, '.'))) {
       end = p + 1;
-      if (NULL ==(p=strchr(end, '.'))){
+      if (NULL == (p=strchr(end, '.'))){
         start = NULL;
         end = NULL;
       }
@@ -2172,8 +2205,8 @@ void FormatCallOracleProcedure(char** buf, SQLINTEGER* len)
     }
 
     //{call      "TEST1.MY_PROC_NAME"()} -> {call       TEST1.MY_PROC_NAME ()}
-    if (pTmp) {
-      p = pTmp;
+    if (pCall) {
+      p = pCall;
       while (*p != '\0') {
         if (*p == '"')
           *p = ' ';
@@ -2182,8 +2215,8 @@ void FormatCallOracleProcedure(char** buf, SQLINTEGER* len)
     }
 
     //{call      TEST1.MY_PROC_NAME} -> {call      TEST1.MY_PROC_NAME()}
-    p = *buf;
-    i = *len - 1;
+    p = buf;
+    i = len - 1;
     while(i>0 && !isalpha(p[i])){
       if (p[i]==')')
         hasParentheses = 1;
@@ -2192,10 +2225,7 @@ void FormatCallOracleProcedure(char** buf, SQLINTEGER* len)
       i--;
     }
     if (!hasParentheses) {
-      SQLINTEGER srcLen = *len;
-      SQLINTEGER reaLen = srcLen + 3;
-      p = realloc(p, reaLen);
-      for(i = srcLen-1; i>0; i--) {
+      for(i = len -1; i>0; i--) {
         if (p[i] != ' ' && p[i] != '\t' && p[i] !='\r' && p[i] != '\n' && p[i] != '}')
           break;
       }
@@ -2205,21 +2235,128 @@ void FormatCallOracleProcedure(char** buf, SQLINTEGER* len)
         p[++i] = '}';
       }
       p[++i] = 0;
-      *buf = p;
-      *len = strlen(p);
     }
+
+    if (useBlock){
+      MADB_DynstrAppendMem(str, "begin \n ", 8);
+
+      if (hasReturn)
+        MADB_DynstrAppendMem(str, " ?:=", 4);
+      if (hasBraces)
+        MADB_DynstrAppendMem(str, pCall, strlen(pCall) - 1); //-1 -> delete '}'
+      else
+        MADB_DynstrAppendMem(str, pCall, strlen(pCall));
+
+      MADB_DynstrAppendMem(str, "; \nend;", 7);
+    } else {
+      MADB_DynstrAppendMem(str, buf, strlen(buf));
+    }
+    free(buf);
   }
+  return 0;
 }
 
-char* GetInsertQueryHead(MADB_QUERY* Query)
-{
-  char *pQuery = Query->RefinedText;
-  char *head = strstr(pQuery, "(");
-  if (head) {
-    char *tmp = strstr(head + 1, "(");
+int FnConvert(char** pos, MADB_DynString* str) {
+  int ret = 0;
+  if (strncasecmp(*pos, "ifnull", 6) == 0) {
+    MADB_DynstrAppendMem(str, "NVL", 3);
+    *pos += 6;
+  } else if (strncasecmp(*pos, "substring", 9) == 0) {
+    MADB_DynstrAppendMem(str, "SUBSTR", 6);
+    *pos += 9;
+  } else if (strncasecmp(*pos, "left", 4) == 0) {
+    char *tmp = NULL;
+    MADB_DynstrAppendMem(str, "SUBSTR", 6);
+    *pos += 4;
+    tmp = strstr(*pos, ",");
     if (tmp) {
-      head = tmp;
+      int len = tmp - *pos;
+      MADB_DynstrAppendMem(str, *pos, len);
+      MADB_DynstrAppendMem(str, ",1", 2);
+      *pos += len;
     }
   }
-  return head;
+  return ret;
+}
+int FormatNativeSQL(char* sql, SQLINTEGER len, MADB_DynString* str)
+{
+  //select {fn IFNULL(NULL, 'aaa')} from dual
+  BOOL inString = 0;
+  BOOL inComment = 0;
+  BOOL isFn = 0;
+  SQLINTEGER i = 0;
+  char *pos = sql;
+  char *end = sql + len;
+
+  while(*pos != 0 && pos < end){
+    if (*pos == '/' && *(pos + 1) == '*') {
+      MADB_DynstrAppendMem(str, pos, 2);
+      pos += 2;
+      inComment = 1;
+    } else if (*pos == '*' && *(pos + 1) == '/') {
+      MADB_DynstrAppendMem(str, pos, 2);
+      pos += 2;
+      inComment = 0;
+    } else if (*pos == '\'' || *pos == '\"') {
+      MADB_DynstrAppendMem(str, pos, 1);
+      pos += 1;
+      inString = inString ? 0 : 1;
+    } else if (*pos == '{' && inString == 0 && inComment == 0) {
+      //{fn xxxx}
+      pos++;
+      while (*pos == ' ')pos++;
+      if (strncasecmp(pos, "fn", 2) == 0) {
+        isFn = 1;
+        pos += 2;
+      }
+
+      while (*pos == ' ') {
+        MADB_DynstrAppendMem(str, pos, 1);
+        pos++;
+      }
+
+      //{ISNULL/LEFT/SUBSTRING}
+      if (isFn) {
+        FnConvert(&pos, str);
+      }
+    } else if (*pos == '}' && isFn && inString == 0 && inComment == 0){
+      MADB_DynstrAppendMem(str, " ", 1);
+      pos++;
+      isFn = 0;
+    } else {
+      MADB_DynstrAppendMem(str, pos, 1);
+      pos += 1;
+    }
+  }
+  return 0;
+}
+
+int FormatSQL(char* sql, SQLINTEGER len, MADB_DynString* str, BOOL* isCall)
+{
+  char *p = sql;
+  *isCall = 0;
+
+  MADB_TRIM_SPACE(p);
+  if (*p == '{')
+    p++; MADB_TRIM_SPACE(p);
+
+  if (*p == '?') { //for function
+    p++; MADB_TRIM_SPACE(p);
+    if (*p == '=') {
+      p++; MADB_TRIM_SPACE(p);
+    }
+  }
+  
+  if (strncasecmp(p, "call", 4) == 0){
+    *isCall = 1;
+  }
+
+  if (*isCall) {
+    //call sql
+    return FormatCallSQL(sql, len, str);
+  } else {
+    //native sql
+    return FormatNativeSQL(sql, len, str);
+  }
+  return -1;
 }

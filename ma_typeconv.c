@@ -1637,16 +1637,32 @@ SQLRETURN MADB_ConvertType2Str(MADB_Stmt *Stmt, SQLSMALLINT ctype, MADB_DescReco
         }
         memcpy(buff, buf, *length);
       } else {
-        buff[0] = '\'';
-        memcpy(buff + 1, dataPtr, *length);
-        buff[*length + 1] = '\'';
-        *length = *length + 2;
+        int i = 0, j = 0;
+        buff[j++] = '\'';
+        for (i = 0; i < *length; i++) {
+          if (dataPtr[i] == '\'') {
+            buff[j++] = dataPtr[i];
+            buff[j++] = dataPtr[i];
+          } else {
+            buff[j++] = dataPtr[i];
+          }
+        }
+        buff[j++] = '\'';
+        *length = j;
       }
     } else {
-      buff[0] = '\'';
-      memcpy(buff + 1, dataPtr, *length);
-      buff[*length + 1] = '\'';
-      *length = *length + 2;
+      int i = 0, j = 0;
+      buff[j++] = '\'';
+      for (i = 0; i < *length; i++) {
+        if (dataPtr[i] == '\'') {
+          buff[j++] = dataPtr[i];
+          buff[j++] = dataPtr[i];
+        } else {
+          buff[j++] = dataPtr[i];
+        }
+      }
+      buff[j++] = '\'';
+      *length = j;
     }
     break;
   }
@@ -1670,10 +1686,22 @@ SQLRETURN MADB_ConvertType2Str(MADB_Stmt *Stmt, SQLSMALLINT ctype, MADB_DescReco
       MADB_FREE(pbuf);
       return MADB_SetError(&Stmt->Error, MADB_ERR_HY000, "MADB_ConvertType2Str fail.", 0);
     }
-    buff[0] = '\'';
-    memcpy(buff + 1, pbuf, *length);
-    buff[*length + 1] = '\'';
-    *length = *length + 2;
+
+    {
+      int i = 0, j = 0;
+      buff[j++] = '\'';
+      for (i = 0; i < *length; i++) {
+        if (pbuf[i] == '\'') {
+          buff[j++] = pbuf[i];
+          buff[j++] = pbuf[i];
+        } else {
+          buff[j++] = pbuf[i];
+        }
+      }
+      buff[j++] = '\'';
+      *length = j;
+    }
+
     MADB_FREE(pbuf);
     break;
   }

@@ -312,8 +312,14 @@ int MADB_ConvertAnsi2Unicode(Client_Charset *cc, const char *AnsiString, SQLLEN 
     goto end;
   }
 
-  if (LengthIndicator)
+  if (LengthIndicator) {  //for fix SqlwcsCharLen error
+    SQLINTEGER tmp = RequiredLength;
     *LengthIndicator= SqlwcsCharLen(Tmp, RequiredLength);
+    if (IsNull)
+      tmp = RequiredLength - sizeof(SQLWCHAR);
+    if (*LengthIndicator*sizeof(SQLWCHAR)<tmp)
+      *LengthIndicator = tmp/sizeof(SQLWCHAR) + tmp%sizeof(SQLWCHAR);
+  }
 
   /* Truncation */
   if (Tmp != UnicodeString)

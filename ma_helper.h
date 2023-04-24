@@ -95,8 +95,10 @@ BOOL          IsDataTruncate(MADB_Stmt *Stmt, MADB_DescRecord *ArdRecord, void* 
 BOOL          GetDataByString(MADB_Stmt *Stmt, MADB_DescRecord *ArdRecord, void* Src, SQLLEN SrcLen, void* Dst, SQLLEN DstLen);
 BOOL GetBinaryData(MADB_Stmt *Stmt, unsigned char* Dst, unsigned long DstLen, unsigned char* Src, unsigned long SrcLen, unsigned long *offset);
 
-void          FormatCallOracleProcedure(char** buf, SQLINTEGER* len);
 char* GetInsertQueryHead(MADB_QUERY* Query);
+int FormatCallSQL(char* sql, SQLINTEGER len, MADB_DynString* str);
+int FormatNativeSQL(char* sql, SQLINTEGER len, MADB_DynString* str);
+int FormatSQL(char* sql, SQLINTEGER len, MADB_DynString* str, BOOL* isCall);
 
 
 /* for dummy binding */

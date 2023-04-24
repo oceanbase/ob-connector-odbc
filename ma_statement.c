@@ -20,7 +20,7 @@
 #include <ma_odbc.h>
 
 #define MADB_MIN_QUERY_LEN 5
-#define MADB_MIN_PARAM_STR 256
+#define MADB_MIN_PARAM_STR 1024
 
 struct st_ma_stmt_methods MADB_StmtMethods; /* declared at the end of file */
 
@@ -703,15 +703,24 @@ SQLRETURN MADB_StmtPrepare(MADB_Stmt *Stmt, char *StatementText, SQLINTEGER Text
     return MADB_SetError(&Stmt->Error, MADB_ERR_42000, NULL, 0);
   }
 
-  char *statementTmp = strndup(StatementText, TextLength);
+  
   if (IS_ORACLE_MODE(Stmt)) {
-    //IMB cognos {call TEST.TEST1.MY_PROC_NAME()} -> {call      TEST1.MY_PROC_NAME()}
-    FormatCallOracleProcedure(&statementTmp, &TextLength);
-    MDBUG_C_PRINT(Stmt->Connection, "%sMADB_StmtPrepare oracle (%s),%d", "\t->", statementTmp, TextLength);
+    BOOL isCall = 0;
+    MADB_DynString strSQL;
+    MADB_InitDynamicString(&strSQL, "", 1024, 1024);
+    if (0 != FormatSQL(StatementText, TextLength, &strSQL, &isCall)) {
+      return MADB_SetError(&Stmt->Error, MADB_ERR_HY000, "format sql error!", 0);
+    }
+
+    MDBUG_C_PRINT(Stmt->Connection, "%sMADB_StmtPrepare oracle (%s),%d", "\t->", strSQL.str, strSQL.length);
+    MADB_ResetParser(Stmt, strSQL.str, strSQL.length);
+    MADB_ParseQuery(&Stmt->Query);
+    Stmt->Query.QueryType = (isCall ? MADB_QUERY_CALL: Stmt->Query.QueryType);
+    MADB_DynstrFree(&strSQL);
+  } else {
+    MADB_ResetParser(Stmt, StatementText, TextLength);
+    MADB_ParseQuery(&Stmt->Query);
   }
-  MADB_ResetParser(Stmt, statementTmp, TextLength);
-  MADB_ParseQuery(&Stmt->Query);
-  MADB_FREE(statementTmp);
 
   if ((Stmt->Query.QueryType == MADB_QUERY_INSERT || Stmt->Query.QueryType == MADB_QUERY_UPDATE || Stmt->Query.QueryType == MADB_QUERY_DELETE)
     && MADB_FindToken(&Stmt->Query, "RETURNING"))
@@ -1247,16 +1256,21 @@ SQLRETURN MADB_GetOutParams(MADB_Stmt *Stmt, int CurrentOffset)
   
   for (i=0; i < (unsigned int)Stmt->ParamCount && ParameterNr < mysql_stmt_field_count(Stmt->stmt); i++)
   {
-    MADB_DescRecord *IpdRecord = NULL, *ApdRecord = NULL, *IrdRecord = NULL;
+    MADB_DescRecord *IpdRecord = NULL, *ApdRecord = NULL;
+    MYSQL_FIELD* fields = NULL;
+    if (Stmt->stmt)
+      fields = Stmt->stmt->fields;
+    if (NULL == fields) {
+      return MADB_SetError(&Stmt->Error, MADB_ERR_HY000, "fields is NULL", 0);
+    }
+
     if ((IpdRecord= MADB_DescGetInternalRecord(Stmt->Ipd, i, MADB_DESC_READ))!= NULL)
     {
       if (IpdRecord->ParameterType == SQL_PARAM_INPUT_OUTPUT ||
           IpdRecord->ParameterType == SQL_PARAM_OUTPUT)
       {
         ApdRecord= MADB_DescGetInternalRecord(Stmt->Apd, i, MADB_DESC_READ);
-        IrdRecord = MADB_DescGetInternalRecord(Stmt->Ird, i, MADB_DESC_READ);
-        
-        if (IS_ORACLE_MODE(Stmt) && IrdRecord && IrdRecord->FieldType == MYSQL_TYPE_CURSOR) {
+        if (IS_ORACLE_MODE(Stmt) && fields[ParameterNr].type == MYSQL_TYPE_CURSOR) {
           Bind[ParameterNr].buffer_length = sizeof(Stmt->arrayRefCursor[0]);
           Bind[ParameterNr].buffer = &Stmt->arrayRefCursor[Stmt->maxRefCursor++];
           Bind[ParameterNr].buffer_type = MYSQL_TYPE_CURSOR;
@@ -1446,7 +1460,7 @@ SQLRETURN MADB_ExecuteNosspsBatch(MADB_Stmt *Stmt)
   MADB_DynString StmtStrBatch;
   MADB_DynString StmtStrBatchHead;
   unsigned int batchMax = Stmt->Query.BatchMax;
-  if (batchMax <= 0 && batchMax > 200) {
+  if (batchMax <= 0 && batchMax > 500) {
     batchMax = 1;
   }
 
@@ -1522,17 +1536,10 @@ SQLRETURN MADB_ExecuteNosspsBatch(MADB_Stmt *Stmt)
       SQLLEN *OctetLengthPtr = (SQLLEN *)GetBindOffset(Stmt->Apd, ApdRecord, ApdRecord->OctetLengthPtr, row, sizeof(SQLLEN));
       SQLLEN *IndicatorPtr = (SQLLEN *)GetBindOffset(Stmt->Apd, ApdRecord, ApdRecord->IndicatorPtr, row, sizeof(SQLLEN));
 
-      /*if (PARAM_IS_DAE(OctetLengthPtr))
-      {
-        if (!DAE_DONE(Stmt))
-        {
-          return SQL_NEED_DATA;
-        }
-        else
-        {
-          return SQL_SUCCESS;
-        }
-      }*/
+      if (PARAM_IS_DAE(OctetLengthPtr)) {
+        MDBUG_C_PRINT(Stmt->Connection, "ExecuteNosspsBatch not support SQL_DATA_AT_EXEC %s","");
+        return MADB_SetError(&Stmt->Error, MADB_ERR_HY000, "ExecuteNosspsBatch not support SQL_DATA_AT_EXEC", 0);
+      }
 
       /* If indicator wasn't NULL_DATA, but data pointer is still NULL, we convert NULL value */
       if (!DataPtr || (IndicatorPtr && *IndicatorPtr == SQL_NULL_DATA))
@@ -1673,6 +1680,10 @@ SQLRETURN MADB_ExecuteNossps(MADB_Stmt *Stmt)
         return MADB_SetError(&Stmt->Error, MADB_ERR_07006, NULL, 0);
       }
 
+      if (IpdRecord->ParameterType == SQL_PARAM_OUTPUT) {
+        return MADB_SetError(&Stmt->Error, MADB_ERR_HY000, "ExecuteNossps not support SQL_PARAM_OUTPUT", 0);
+      }
+
       char *pos = Query->RefinedText + ((uint *)Query->ParamPos.buffer)[i];
       len = pos - pQuery;
       if (MADB_DynstrAppendMem(&StmtStr, pQuery, len)) {
@@ -1691,16 +1702,9 @@ SQLRETURN MADB_ExecuteNossps(MADB_Stmt *Stmt)
       SQLLEN *OctetLengthPtr = (SQLLEN *)GetBindOffset(Stmt->Apd, ApdRecord, ApdRecord->OctetLengthPtr, row, sizeof(SQLLEN));
       SQLLEN *IndicatorPtr = (SQLLEN *)GetBindOffset(Stmt->Apd, ApdRecord, ApdRecord->IndicatorPtr, row, sizeof(SQLLEN));
 
-      if (PARAM_IS_DAE(OctetLengthPtr))
-      {
-        if (!DAE_DONE(Stmt))
-        {
-          return SQL_NEED_DATA;
-        }
-        else
-        {
-          return SQL_SUCCESS;
-        }
+      if (PARAM_IS_DAE(OctetLengthPtr)) {
+        MDBUG_C_PRINT(Stmt->Connection, "ExecuteNossps not support SQL_DATA_AT_EXEC %s", "");
+        return MADB_SetError(&Stmt->Error, MADB_ERR_HY000, "ExecuteNossps not support SQL_DATA_AT_EXEC", 0);
       }
 
       /* If indicator wasn't NULL_DATA, but data pointer is still NULL, we convert NULL value */
@@ -1978,7 +1982,7 @@ SQLRETURN MADB_StmtExecute(MADB_Stmt *Stmt, BOOL ExecDirect)
 
         for (i= ParamOffset; i < ParamOffset + MADB_STMT_PARAM_COUNT(Stmt); ++i)
         {
-          MADB_DescRecord *ApdRecord = NULL, *IpdRecord = NULL, *IrdRecord = NULL;
+          MADB_DescRecord *ApdRecord = NULL, *IpdRecord = NULL;
 
           if ((ApdRecord= MADB_DescGetInternalRecord(Stmt->Apd, i, MADB_DESC_READ)) &&
             (IpdRecord= MADB_DescGetInternalRecord(Stmt->Ipd, i, MADB_DESC_READ)))
@@ -1997,14 +2001,7 @@ SQLRETURN MADB_StmtExecute(MADB_Stmt *Stmt, BOOL ExecDirect)
             }
 
             Stmt->params[i - ParamOffset].length = NULL;
-
-            IrdRecord = MADB_DescGetInternalRecord(Stmt->Ird, i, MADB_DESC_READ);
-            if (IS_ORACLE_MODE(Stmt) && IrdRecord && IrdRecord->FieldType == MYSQL_TYPE_CURSOR) {
-              ret = MADB_C2RefCursor(Stmt, IrdRecord, j - Start, &Stmt->params[i - ParamOffset]);
-            } else {
-              ret = MADB_C2SQL(Stmt, ApdRecord, IpdRecord, j - Start, &Stmt->params[i - ParamOffset]);
-            }
-            
+            ret = MADB_C2SQL(Stmt, ApdRecord, IpdRecord, j - Start, &Stmt->params[i - ParamOffset]);
             if (!SQL_SUCCEEDED(ret))
             {
               if (ret == SQL_NEED_DATA)
@@ -2165,14 +2162,14 @@ SQLRETURN MADB_StmtBindCol(MADB_Stmt *Stmt, SQLUSMALLINT ColumnNumber, SQLSMALLI
     }
   } else if (IsStmtNossps(Stmt)){
     if ((ColumnNumber < 1 && Stmt->Options.UseBookmarks == SQL_UB_OFF) ||
-      (mysql_field_count(Stmt->Connection->mariadb) && ColumnNumber > mysql_field_count(Stmt->Connection->mariadb)))
-    {
+      (Stmt->stmt->state > MYSQL_STMT_INITTED && StmtFieldCount(Stmt) && ColumnNumber > StmtFieldCount(Stmt)))
+    {//nossps before prepare/execute call SQLBindCol
       MADB_SetError(&Stmt->Error, MADB_ERR_07009, NULL, 0);
       return SQL_ERROR;
     }
   } else {
     if ((ColumnNumber < 1 && Stmt->Options.UseBookmarks == SQL_UB_OFF) ||
-      (mysql_stmt_field_count(Stmt->stmt) && Stmt->stmt->state > MYSQL_STMT_PREPARED && ColumnNumber > mysql_stmt_field_count(Stmt->stmt)))
+      (Stmt->stmt->state > MYSQL_STMT_PREPARED && mysql_stmt_field_count(Stmt->stmt) &&  ColumnNumber > mysql_stmt_field_count(Stmt->stmt)))
     {
       MADB_SetError(&Stmt->Error, MADB_ERR_07009, NULL, 0);
       return SQL_ERROR;
@@ -3183,7 +3180,7 @@ SQLRETURN MADB_FixFetchedValues(MADB_Stmt *Stmt, int RowNumber, MYSQL_ROW_OFFSET
             *Stmt->stmt->bind[i].length, &Stmt->Error);
           /* Not quite right */
           *LengthPtr= CharLen * sizeof(SQLWCHAR);
-          MDBUG_C_PRINT(Stmt->Connection, "--wchar len:%d", CharLen * 2);
+          MDBUG_C_PRINT(Stmt->Connection, "--idx:%d,octlen:%d,bindlen:%d,wcharlen:%d", i, ArdRec->OctetLength, *Stmt->stmt->bind[i].length, CharLen * 2);
           }
         }
         break;

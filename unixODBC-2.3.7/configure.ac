@@ -144,8 +144,13 @@ AC_ARG_ENABLE( gui,
     *) ;;
     esac])
 
+
 dnl Enable building of the convenience library
 dnl and set LIBLTDL accordingly
+
+CFLAGS="-z noexecstack -z now -pie -fPIC -fstack-protector"
+LDFLAGS="-Wl,-z,relro,-z,now "
+LIBS="-Wl,-z,relro,-z,now "
 
 INCLTDL=""
 LIBLTDL=""
@@ -525,7 +530,7 @@ AC_CHECK_FUNCS( putenv socket strdup strstr setenv setlocale strchr )
 dnl This is the unixODBC source tree
 AC_DEFINE([UNIXODBC_SOURCE],[],[We are building inside the unixODBC source tree])
 
-LIB_VERSION="2:3:0"
+LIB_VERSION="2:8:0"
 AC_SUBST(LIB_VERSION)
 
 AC_CONFIG_HEADERS(config.h)
