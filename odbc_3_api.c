@@ -1963,6 +1963,8 @@ SQLRETURN SQL_API SQLNativeSql(SQLHDBC ConnectionHandle,
 
   MDBUG_C_ENTER(Dbc, "SQLNativeSql");
 
+  Length = (TextLength1 == SQL_NTS) ? strlen(InStatementText) : TextLength1;
+
   if (!TextLength2Ptr && (!OutStatementText || !BufferLength))
   {
     MADB_SetError(&Dbc->Error, MADB_ERR_01004, NULL, 0);
@@ -1970,8 +1972,8 @@ SQLRETURN SQL_API SQLNativeSql(SQLHDBC ConnectionHandle,
   }
   
   MADB_InitDynamicString(&str, "", 1024, 1024);
-  FormatNativeSQL(InStatementText, TextLength1, &str);
-  Length = (SQLINTEGER)MADB_SetString(0, OutStatementText, BufferLength, (char *)InStatementText, TextLength1, &Dbc->Error);
+  FormatNativeSQL(InStatementText, Length, &str);
+  Length = (SQLINTEGER)MADB_SetString(0, OutStatementText, BufferLength, (char *)str.str, str.length, &Dbc->Error);
   if (TextLength2Ptr)
     *TextLength2Ptr = Length;
   MADB_DynstrFree(&str);

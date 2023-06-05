@@ -187,6 +187,13 @@ SQLRETURN MADB_StmtMoreResultsRefCursor(MADB_Stmt *Stmt)
     Stmt->lastRefCursor = -1;
     Stmt->maxRefCursor = 0;
     ret = SQL_NO_DATA_FOUND;
+  } else {
+    if (Stmt->arrayRefCursor[Stmt->lastRefCursor] == 0) {
+      ret = SQL_SUCCESS_WITH_INFO;
+    } else {
+      //open lastRefCursor 
+      ret = MADB_StmtOpenRefCursor(Stmt, SQL_FETCH_NEXT, 1);
+    }
   }
   return ret;
 }

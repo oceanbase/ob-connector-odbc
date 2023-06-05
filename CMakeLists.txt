@@ -23,11 +23,11 @@ cmake_minimum_required(VERSION 2.8)
 
 SET(MARIADB_ODBC_VERSION_MAJOR 2)
 SET(MARIADB_ODBC_VERSION_MINOR 0)
-SET(MARIADB_ODBC_VERSION_PATCH 7)
-SET(MARIADB_ODBC_VERSION_EXTRA 0)
+SET(MARIADB_ODBC_VERSION_PATCH 8)
+SET(MARIADB_ODBC_VERSION_EXTRA 1)
 SET(MARIADB_ODBC_VERSION_QUALITY "ga")
 
-SET(MARIADB_ODBC_VERSION "02.0.007.0")
+SET(MARIADB_ODBC_VERSION "02.0.008.1")
 
 SET(MARIADB_DEFAULT_PLUGINS_SUBDIR "plugin")
 CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/ma_odbc_version.h.in
@@ -55,7 +55,8 @@ SET (MARIADB_ODBC_SOURCES odbc_3_api.c
                           ma_server.c
                           ma_legacy_helpers.c
                           ma_typeconv.c
-                          ma_bulk.c)
+                          ma_bulk.c
+                          ma_dtoa2.c)
 
 SET(DSN_DIALOG_FILES ${CMAKE_SOURCE_DIR}/dsn/odbc_dsn.c
                      ${CMAKE_SOURCE_DIR}/dsn/odbc_dsn.rc
@@ -300,10 +301,12 @@ SET(CPACK_COMPONENTS_ALL_IN_ONE_PACKAGE 1)
 #SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DDBUG_OFF")
 #SET(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -DDBUG_OFF")
 #SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -DDBUG_OFF")
+IF(UNIX)
 SET(CMAKE_C_FLAGS_RELEASE " -z noexecstack -z now -pie -fPIC -fstack-protector ")
 SET(CMAKE_CXX_FLAGS_RELEASE " -z noexecstack -z now -pie -fPIC -fstack-protector ")
 SET(CMAKE_C_FLAGS_RELWITHDEBINFO " -z noexecstack -z now -pie -fPIC -fstack-protector ")
 SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO " -z noexecstack -z now -pie -fPIC -fstack-protector ")
+ENDIF()
 
 
 # We need to determine the last parameter for SQLColAttribute:

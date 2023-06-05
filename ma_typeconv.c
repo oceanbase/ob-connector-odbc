@@ -1737,7 +1737,9 @@ SQLRETURN MADB_ConvertType2Str(MADB_Stmt *Stmt, SQLSMALLINT ctype, MADB_DescReco
     if (sqlCRec->ConciseType != SQL_NUMERIC && sqlCRec->ConciseType != SQL_DECIMAL)
     {
       if (IS_ORACLE_MODE(Stmt)){
-        sprintf(buff, "%.17f", *((float*)dataPtr));
+        float tmp = *((float*)dataPtr);
+        ma_gcvt2(tmp, 0, (int)buff_max, buff, NULL);
+        //sprintf(buff, "%.17f", *((float*)dataPtr));
       } else {
         sprintf(buff, "%.17e", *((float*)dataPtr));
       }
@@ -1746,7 +1748,9 @@ SQLRETURN MADB_ConvertType2Str(MADB_Stmt *Stmt, SQLSMALLINT ctype, MADB_DescReco
     {
       /* We should perpare this data for string comparison */
       if (IS_ORACLE_MODE(Stmt)) {
-        sprintf(buff, "%.15f", *((float*)dataPtr));
+        float tmp = *((float*)dataPtr);
+        ma_gcvt2(tmp, 0, (int)buff_max, buff, NULL);
+        //sprintf(buff, "%.15f", *((float*)dataPtr));
       } else {
         sprintf(buff, "%.15e", *((float*)dataPtr));
       }
@@ -1757,7 +1761,9 @@ SQLRETURN MADB_ConvertType2Str(MADB_Stmt *Stmt, SQLSMALLINT ctype, MADB_DescReco
     if (sqlCRec->ConciseType != SQL_NUMERIC && sqlCRec->ConciseType != SQL_DECIMAL)
     {
       if (IS_ORACLE_MODE(Stmt)) {
-        sprintf(buff, "%.17lf", *((double*)dataPtr));
+        double tmp = *((double*)dataPtr);
+        ma_gcvt2(tmp, 1, (int)buff_max, buff, NULL);
+        //sprintf(buff, "%.17lf", *((double*)dataPtr));
       } else {
         sprintf(buff, "%.17e", *((double*)dataPtr));
       }
@@ -1766,7 +1772,9 @@ SQLRETURN MADB_ConvertType2Str(MADB_Stmt *Stmt, SQLSMALLINT ctype, MADB_DescReco
     {
       /* We should perpare this data for string comparison */
       if (IS_ORACLE_MODE(Stmt)) {
-        sprintf(buff, "%.15lf", *((double*)dataPtr));
+        double tmp = *((double*)dataPtr);
+        ma_gcvt2(tmp, 1, (int)buff_max, buff, NULL);
+        //sprintf(buff, "%.15lf", *((double*)dataPtr));
       } else {
         sprintf(buff, "%.15e", *((double*)dataPtr));
       }

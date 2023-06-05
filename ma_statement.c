@@ -2115,9 +2115,8 @@ SQLRETURN MADB_StmtExecute(MADB_Stmt *Stmt, BOOL ExecDirect)
      if (mysql_more_results(Stmt->stmt->mysql)) {
       mysql_stmt_next_result(Stmt->stmt);
     }
-    if (Stmt->lastRefCursor < Stmt->maxRefCursor && NULL == Stmt->stmtRefCursor &&
-      SQL_SUCCESS != MADB_StmtOpenRefCursor(Stmt, SQL_FETCH_NEXT, 1)) {
-      IntegralRc = SQL_ERROR;
+    if (Stmt->lastRefCursor < Stmt->maxRefCursor && NULL == Stmt->stmtRefCursor){
+      IntegralRc = MADB_StmtOpenRefCursor(Stmt, SQL_FETCH_NEXT, 1);
     }
   }
 
@@ -5458,9 +5457,19 @@ SQLRETURN MADB_StmtParamCount(MADB_Stmt *Stmt, SQLSMALLINT *ParamCountPtr)
 /* {{{ MADB_StmtColumnCount */
 SQLRETURN MADB_StmtColumnCount(MADB_Stmt *Stmt, SQLSMALLINT *ColumnCountPtr)
 {
+  SQLRETURN ret = SQL_SUCCESS;
   /* We supposed to have that data in the descriptor by now. No sense to ask C/C API one more time for that */
-  *ColumnCountPtr= (SQLSMALLINT)MADB_STMT_COLUMN_COUNT(Stmt);
-  return SQL_SUCCESS;
+  if (IS_ORACLE_MODE(Stmt)) {
+    *ColumnCountPtr = (SQLSMALLINT)MADB_STMT_COLUMN_COUNT(Stmt);
+    if (IsStmtRefCursor(Stmt)) {
+      if (Stmt->arrayRefCursor[Stmt->lastRefCursor] == 0) {
+        ret = SQL_SUCCESS_WITH_INFO;
+      }
+    }
+  } else {
+    *ColumnCountPtr = (SQLSMALLINT)MADB_STMT_COLUMN_COUNT(Stmt);
+  }
+  return ret;
 }
 /* }}} */
 
@@ -6467,12 +6476,16 @@ SQLRETURN MADB_StmtOpenRefCursor(MADB_Stmt *Stmt, SQLSMALLINT FetchOrientation, 
   //Stmt->stmtRefCursor->orientation = FetchOrientation;
   //Stmt->stmtRefCursor->fetch_offset = FetchOffset;
 
-  if (mysql_stmt_fetch_oracle_cursor(Stmt->stmtRefCursor)) {
-    MADB_StmtCloseRefCursor(Stmt);
-    MADB_SetNativeError(&Stmt->Error, SQL_HANDLE_STMT, Stmt->stmt);
-    return SQL_ERROR;
+  if (Stmt->stmtRefCursor->stmt_id > 0) {
+    if (mysql_stmt_fetch_oracle_cursor(Stmt->stmtRefCursor)) {
+      MADB_StmtCloseRefCursor(Stmt);
+      MADB_SetNativeError(&Stmt->Error, SQL_HANDLE_STMT, Stmt->stmt);
+      return SQL_ERROR;
+    }
+  } else {
+    ret = SQL_SUCCESS_WITH_INFO;
   }
-
+  
   if (mysql_stmt_field_count(Stmt->stmtRefCursor) > 0)
   {
     MADB_StmtResetResultStructures(Stmt);
@@ -6510,9 +6523,7 @@ SQLRETURN MADB_StmtFetchScrollRefCursor(MADB_Stmt *Stmt, SQLSMALLINT FetchOrient
     return Stmt->Error.ReturnValue;
   }
 
-  if (NULL == Stmt->stmtRefCursor && SQL_SUCCESS != MADB_StmtOpenRefCursor(Stmt, FetchOrientation, FetchOffset)) {
-    return Stmt->Error.ReturnValue;
-  } else if(NULL == Stmt->stmtRefCursor) {
+  if(NULL == Stmt->stmtRefCursor) {
     MADB_SetError(&Stmt->Error, MADB_ERR_HY001, NULL, 0);
     return Stmt->Error.ReturnValue;
   }

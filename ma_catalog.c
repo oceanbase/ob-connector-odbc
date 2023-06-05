@@ -80,8 +80,8 @@ SQLRETURN MADB_StmtTablePrivileges(MADB_Stmt *Stmt, char *CatalogName, SQLSMALLI
 
   MADB_CLEAR_ERROR(&Stmt->Error);
   if(IS_ORACLE_MODE(Stmt)) {
-    p += _snprintf(p, MAX_CATALOG_SQLLEN,"SELECT AO.OWNER AS TABLE_SCHEMA, NULL AS TABLE_CAT,AO.OBJECT_NAME AS TABLE_NAME, "
-                  "NULL AS COLUMN_NAME,NULL AS GRANTOR, NULL as GRANTEE, NULL as PRIVILEGE, AO.GENERATED AS IS_GRANTABLE "
+    p += _snprintf(p, MAX_CATALOG_SQLLEN,"SELECT NULL AS TABLE_CAT, AO.OWNER AS TABLE_SCHEM, AO.OBJECT_NAME AS TABLE_NAME, "
+                  "NULL AS GRANTOR, NULL as GRANTEE, NULL as PRIVILEGE, AO.GENERATED AS IS_GRANTABLE "
                   "FROM ALL_OBJECTS AO WHERE AO.OBJECT_TYPE = 'TABLE' ");
     
     p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), " AND AO.OWNER IN SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') ");
@@ -91,7 +91,7 @@ SQLRETURN MADB_StmtTablePrivileges(MADB_Stmt *Stmt, char *CatalogName, SQLSMALLI
     //if (TableName &&TableName[0])
     //  p += _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), " AND  AO.OBJECT_NAME = '%s' ", TableName);
 
-    p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), " ORDER BY TABLE_SCHEMA, TABLE_NAME");
+    p+= _snprintf(p, MAX_CATALOG_SQLLEN - strlen(StmtStr), " ORDER BY TABLE_SCHEM, TABLE_NAME");
   } else {
     p += _snprintf(p, MAX_CATALOG_SQLLEN, "SELECT TABLE_SCHEMA AS TABLE_CAT, NULL AS TABLE_SCHEM, TABLE_NAME, "
                   "NULL AS GRANTOR, GRANTEE, PRIVILEGE_TYPE AS PRIVILEGE, IS_GRANTABLE "
