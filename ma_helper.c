@@ -634,7 +634,6 @@ size_t MADB_GetDisplaySize(MYSQL_FIELD *Field, MARIADB_CHARSET_INFO *charset, BO
   case MYSQL_TYPE_OB_RAW:
   case MYSQL_TYPE_OB_NVARCHAR2:
   case MYSQL_TYPE_OB_NCHAR:
-  case MYSQL_TYPE_OB_UROWID:
   case MYSQL_TYPE_ORA_BLOB:
   case MYSQL_TYPE_ORA_CLOB:
   {
@@ -654,6 +653,8 @@ size_t MADB_GetDisplaySize(MYSQL_FIELD *Field, MARIADB_CHARSET_INFO *charset, BO
       }
     }
   }
+  case MYSQL_TYPE_OB_UROWID:
+    return 36;
   default:
     return SQL_NO_TOTAL;
   }
@@ -729,10 +730,11 @@ size_t MADB_GetOctetLength(MYSQL_FIELD *Field, unsigned short MaxCharLen, BOOL I
   case MYSQL_TYPE_OB_RAW:
   case MYSQL_TYPE_OB_NVARCHAR2:
   case MYSQL_TYPE_OB_NCHAR:
-  case MYSQL_TYPE_OB_UROWID:
   case MYSQL_TYPE_ORA_BLOB:
   case MYSQL_TYPE_ORA_CLOB:
     return Length; /* Field->length is calculated using current charset */
+  case MYSQL_TYPE_OB_UROWID:
+    return 36;
   default:
     return SQL_NO_TOTAL;
   }
@@ -857,6 +859,8 @@ SQLSMALLINT MapMariadDbToOdbcType(MYSQL_FIELD *field)
       return SQL_VARBINARY;
     case MYSQL_TYPE_OB_NUMBER_FLOAT:
       return SQL_FLOAT;
+    case MYSQL_TYPE_OB_UROWID:
+      return SQL_WCHAR;
     default:
       return SQL_UNKNOWN_TYPE;
   }
@@ -2003,6 +2007,20 @@ BOOL IsDataTruncate(MADB_Stmt *Stmt, MADB_DescRecord *ArdRecord, void *Src, long
       return NUMERIC_TRUNCATION(val, 0, UINT_MAX32);
     } else {
       return ArdRecord->OctetLength < sizeof(SQLINTEGER);
+    }
+  case SQL_C_SBIGINT:
+    if (Src != NULL) {
+      long long val = strtoll(Src, NULL, 10);
+      return NUMERIC_TRUNCATION(val, 0, INT_MAX64);
+    } else {
+      return ArdRecord->OctetLength < sizeof(SQLLEN);
+    }
+  case SQL_C_UBIGINT:
+    if (Src != NULL) {
+      unsigned long long val = strtoull(Src, NULL, 10);
+      return NUMERIC_TRUNCATION(val, 0, UINT_MAX64);
+    } else {
+      return ArdRecord->OctetLength < sizeof(SQLULEN);
     }
   case SQL_C_FLOAT:
     return ArdRecord->OctetLength < sizeof(float);

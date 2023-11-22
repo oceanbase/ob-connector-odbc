@@ -1115,8 +1115,14 @@ SQLRETURN MADB_DbcGetInfo(MADB_Dbc *Dbc, SQLUSMALLINT InfoType, SQLPOINTER InfoV
   case SQL_CATALOG_NAME:
     /* Todo: MyODBC Driver has a DSN configuration for diabling catalog usage:
        but it's not implemented in MAODBC */
-    SLen= (SQLSMALLINT)MADB_SetString(isWChar ? &Dbc->Charset : NULL, 
-                                     (void *)InfoValuePtr, BUFFER_CHAR_LEN(BufferLength, isWChar), "Y", SQL_NTS, &Dbc->Error);
+    {
+      char *catalog_name = "Y";
+      if (Dbc && Dbc->OracleMode) {
+        catalog_name = "N";
+      }
+      SLen = (SQLSMALLINT)MADB_SetString(isWChar ? &Dbc->Charset : NULL,
+        (void *)InfoValuePtr, BUFFER_CHAR_LEN(BufferLength, isWChar), catalog_name, SQL_NTS, &Dbc->Error);
+    }
     break;
   case SQL_CATALOG_NAME_SEPARATOR:
     SLen= (SQLSMALLINT)MADB_SetString(isWChar ? &Dbc->Charset : NULL, 
@@ -1631,9 +1637,14 @@ SQLRETURN MADB_DbcGetInfo(MADB_Dbc *Dbc, SQLUSMALLINT InfoType, SQLPOINTER InfoV
                                      "N", SQL_NTS, &Dbc->Error);
     break;
   case SQL_SCHEMA_TERM:
-    SLen= (SQLSMALLINT)MADB_SetString(isWChar ? &Dbc->Charset : NULL, (void *)InfoValuePtr,
-                                      BUFFER_CHAR_LEN(BufferLength, isWChar),
-                                     "", SQL_NTS, &Dbc->Error);
+    {
+      char* schema_term = "database";
+      if (Dbc && Dbc->OracleMode) {
+        schema_term = "Owner";
+      }
+      SLen = (SQLSMALLINT)MADB_SetString(isWChar ? &Dbc->Charset : NULL, (void *)InfoValuePtr,
+        BUFFER_CHAR_LEN(BufferLength, isWChar), schema_term, SQL_NTS, &Dbc->Error);
+    }
     break;
   case SQL_SCHEMA_USAGE:
     MADB_SET_NUM_VAL(SQLUINTEGER, InfoValuePtr, 0, StringLengthPtr);

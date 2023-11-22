@@ -465,6 +465,7 @@ void  CloseClientCharset(Client_Charset *cc);
 #define NUMERIC_TRUNCATION(val,min_range, max_range)\
   ((((val) > (max_range)) || ((val) < (min_range)) ? 1 : 0))
 
+#define UINT_MAX64      0xFFFFFFFFFFFFFFFFLL
 #define INT_MIN64       (~0x7FFFFFFFFFFFFFFFLL)
 #define INT_MAX64       0x7FFFFFFFFFFFFFFFLL
 #define INT_MIN32       (~0x7FFFFFFFL)

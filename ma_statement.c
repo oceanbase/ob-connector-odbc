@@ -653,7 +653,7 @@ SQLRETURN MADB_RegularPrepare(MADB_Stmt *Stmt)
 
     UNLOCK_MARIADB(Stmt->Connection);
 
-    MDBUG_C_PRINT(Stmt->Connection, "mysql_stmt_init(%0x)->%0x", Stmt->Connection->mariadb, Stmt->stmt);
+    MDBUG_C_PRINT(Stmt->Connection, "mysql_stmt_init(%s)(%0x)->%0x", Stmt->Error.SqlState, Stmt->Connection->mariadb, Stmt->stmt);
 
     return Stmt->Error.ReturnValue;
   }
@@ -2706,6 +2706,9 @@ SQLRETURN MADB_FixFetchedValuesNossps(MADB_Stmt *Stmt, int RowNumber, MYSQL_ROW_
       IrdRec = MADB_DescGetInternalRecord(Stmt->Ird, i, MADB_DESC_READ);
       /* assert(IrdRec != NULL) */
 
+      if (Stmt->Connection && Stmt->row2[i])
+        MDBUG_C_DUMP(Stmt->Connection, Stmt->row2[i], s);
+
       if (Stmt->row2[i] == NULL)
       {
         if (IndicatorPtr)
@@ -2927,7 +2930,18 @@ SQLRETURN MADB_FixFetchedValuesNossps(MADB_Stmt *Stmt, int RowNumber, MYSQL_ROW_
           }
           *LengthPtr = sizeof(SQLUINTEGER);
           break;
-          
+        case SQL_C_SBIGINT:
+          if (DataPtr != NULL) {
+            *((SQLLEN *)DataPtr) = (SQLLEN)strtoll(Stmt->row2[i], NULL, 10);
+          }
+          *LengthPtr = sizeof(SQLLEN);
+          break;
+        case SQL_C_UBIGINT:
+          if (DataPtr != NULL) {
+            *((SQLULEN *)DataPtr) = (SQLULEN)strtoll(Stmt->row2[i], NULL, 10);
+          }
+          *LengthPtr = sizeof(SQLULEN);
+          break;
           /* else {we are falling through below} */
         default:
           if (DataPtr != NULL)
@@ -4268,6 +4282,9 @@ SQLRETURN MADB_StmtGetDataNossps(SQLHSTMT StatementHandle,
     return SQL_SUCCESS;
   }
 
+  if (Stmt->Connection && Stmt->row2[Offset])
+    MDBUG_C_DUMP(Stmt->Connection, Stmt->row2[Offset], s);
+
   /* We might need it for SQL_C_DEFAULT type, or to obtain length of fixed length types(Access likes to have it) */
   IrdRec = MADB_DescGetInternalRecord(Stmt->Ird, Offset, MADB_DESC_READ);
   if (!IrdRec)
@@ -5567,6 +5584,9 @@ SQLRETURN MADB_StmtColAttr(MADB_Stmt *Stmt, SQLUSMALLINT ColumnNumber, SQLUSMALL
     if (IS_ORACLE_MODE(Stmt)) {
       if (Record->ConciseType == SQL_DECIMAL) {
         NumericAttribute = SQL_FLOAT;
+      }
+      if (Record->FieldType == MYSQL_TYPE_OB_UROWID) {
+        NumericAttribute = SQL_WCHAR;
       }
     }
     break;

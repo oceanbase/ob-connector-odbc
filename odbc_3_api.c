@@ -2086,6 +2086,7 @@ SQLRETURN SQL_API SQLPrepare(SQLHSTMT StatementHandle,
     SQLCHAR *StatementText,
     SQLINTEGER TextLength)
 {
+  SQLRETURN ret;
   MADB_Stmt *Stmt= (MADB_Stmt *)StatementHandle;
 
   if (StatementHandle == SQL_NULL_HSTMT)
@@ -2100,8 +2101,8 @@ SQLRETURN SQL_API SQLPrepare(SQLHSTMT StatementHandle,
   MDBUG_C_DUMP(Stmt->Connection, TextLength, d);
 
   /* Prepare method clears error */
-
-  return Stmt->Methods->Prepare(Stmt, (char *)StatementText, TextLength, FALSE);
+  ret = Stmt->Methods->Prepare(Stmt, (char *)StatementText, TextLength, FALSE);
+  MDBUG_C_RETURN(Stmt->Connection, ret, &Stmt->Error);
 }
 /* }}} */
 

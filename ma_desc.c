@@ -312,7 +312,11 @@ MADB_SetIrdRecord(MADB_Stmt *Stmt, MADB_DescRecord *Record, MYSQL_FIELD *Field)
   Record->OctetLength= MADB_GetOctetLength(Field, cs.mbmaxlen, Stmt->Connection->OracleMode);
   Record->Length= MADB_GetDataSize(Record->ConciseType, Field->length, Record->Unsigned == SQL_TRUE,
                                    Record->Precision, Record->Scale, FieldCs!= NULL ? FieldCs->char_maxlen : 1, Stmt->Connection->OracleMode);
-    
+
+  if (Record->FieldType == MYSQL_TYPE_OB_UROWID) {
+    Record->Length = 36;
+  }
+
   MADB_RESET(Record->TypeName, MADB_GetTypeName(Field, Stmt->Connection->OracleMode));
 
   switch(Field->type) {

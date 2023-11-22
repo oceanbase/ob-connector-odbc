@@ -147,7 +147,7 @@ SQLRETURN MADB_StmtTables(MADB_Stmt *Stmt, char *CatalogName, SQLSMALLINT Catalo
       MADB_DynstrAppend(&StmtStr, "%");
     }
     MADB_DynstrAppend(&StmtStr, "'");
-    MADB_DynstrAppend(&StmtStr, " ESCAPE '/' AND AO.OBJECT_NAME LIKE ");
+    MADB_DynstrAppend(&StmtStr, " ESCAPE '\\' AND AO.OBJECT_NAME LIKE ");
     MADB_DynstrAppend(&StmtStr, "'");
     if(TableName != NULL && TableNameLength > 0) {
       MADB_DynstrAppend(&StmtStr,TableName);
@@ -155,7 +155,7 @@ SQLRETURN MADB_StmtTables(MADB_Stmt *Stmt, char *CatalogName, SQLSMALLINT Catalo
       MADB_DynstrAppend(&StmtStr, "%");
     }
     MADB_DynstrAppend(&StmtStr, "'");
-    MADB_DynstrAppend(&StmtStr, " ESCAPE '/' AND AO.OWNER = ATC.OWNER (+) AND AO.OBJECT_NAME = ATC.TABLE_NAME (+) AND AO.OWNER != '__RECYCLEBIN' ");
+    MADB_DynstrAppend(&StmtStr, " ESCAPE '\\' AND AO.OWNER = ATC.OWNER (+) AND AO.OBJECT_NAME = ATC.TABLE_NAME (+) AND AO.OWNER != '__RECYCLEBIN' ");
     if (TableType && TableTypeLength && strcmp(TableType, SQL_ALL_TABLE_TYPES) != 0)
     {
       unsigned int i;
@@ -458,7 +458,7 @@ SQLRETURN MADB_StmtColumns(MADB_Stmt *Stmt,
         goto dynerror;
     }
 
-    MADB_DynstrAppend(&StmtStr, " ESCAPE '/' AND ATC.table_name LIKE ") ;
+    MADB_DynstrAppend(&StmtStr, " ESCAPE '\\' AND ATC.table_name LIKE ") ;
 
     if (TableName && NameLength3) {
       if(MADB_DynstrAppend(&StmtStr, "'") ||
@@ -471,7 +471,7 @@ SQLRETURN MADB_StmtColumns(MADB_Stmt *Stmt,
     }
 
 
-    MADB_DynstrAppend(&StmtStr, " ESCAPE '/' AND ATC.column_name LIKE ") ;
+    MADB_DynstrAppend(&StmtStr, " ESCAPE '\\' AND ATC.column_name LIKE ") ;
     if (ColumnName && NameLength4) {
       if (MADB_DynstrAppend(&StmtStr, "'") ||
         MADB_DynstrAppendMem(&StmtStr, ColumnName, NameLength4) ||
