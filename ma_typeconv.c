@@ -1402,7 +1402,7 @@ SQLLEN MADB_CalculateLength2Str(MADB_Stmt *Stmt, SQLLEN *OctetLengthPtr, MADB_De
     case SQL_C_BINARY:
     case SQL_VARBINARY:
     case SQL_LONGVARBINARY:
-      return 2 * SafeStrlen((SQLCHAR *)DataPtr, BufferLen != 0 ? BufferLen : -1);
+    //  return 2 * SafeStrlen((SQLCHAR *)DataPtr, BufferLen != 0 ? BufferLen : -1);
     case SQL_C_CHAR:
       return SafeStrlen((SQLCHAR *)DataPtr, BufferLen != 0 ? BufferLen : -1);
     }
@@ -1608,7 +1608,9 @@ SQLRETURN MADB_ConvertType2Str(MADB_Stmt *Stmt, SQLSMALLINT ctype, MADB_DescReco
   switch (ctype)
   {
   case SQL_C_BINARY:
-  {
+  case SQL_VARBINARY:
+  case SQL_LONGVARBINARY:
+/*  {
     if (IS_ORACLE_MODE(Stmt)){
       int i = 0;
       long len = *length / 2;
@@ -1624,7 +1626,7 @@ SQLRETURN MADB_ConvertType2Str(MADB_Stmt *Stmt, SQLSMALLINT ctype, MADB_DescReco
       *length = *length + 2;
     }
     break;
-  }
+  }*/
   case SQL_C_CHAR:
   {
     if (IS_ORACLE_MODE(Stmt)){

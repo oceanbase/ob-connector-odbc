@@ -24,8 +24,7 @@ MADB_Env *MADB_EnvInit();
 SQLRETURN MADB_EnvFree(MADB_Env *Env);
 
 SQLRETURN MADB_EnvSetAttr(MADB_Env* Env, SQLINTEGER Attribute, SQLPOINTER ValuePtr, SQLINTEGER StringLength);
-SQLRETURN MADB_EnvGetAttr(MADB_Env *Env, SQLINTEGER Attribute, SQLPOINTER ValuePtr, SQLINTEGER BufferLength,
-                          SQLINTEGER *StringLengthPtr);
+SQLRETURN MADB_EnvGetAttr(MADB_Env *Env, SQLINTEGER Attribute, SQLPOINTER ValuePtr, SQLINTEGER BufferLength, SQLINTEGER *StringLengthPtr);
 
 extern Client_Charset SourceAnsiCs;
 

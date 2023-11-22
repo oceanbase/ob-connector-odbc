@@ -1172,7 +1172,7 @@ SQLRETURN MADB_GetOutParamsFixValues(MADB_Stmt *Stmt, int CurrentOffset)
   unsigned int i = 0, ParameterNr = 0;
   void *DataPtr;
   SQLLEN *LengthPtr = NULL;
-  SQLINTEGER Dummy = 0;
+  SQLLEN Dummy = 0;
 
   for (i = 0; i < (unsigned int)Stmt->ParamCount && ParameterNr < mysql_stmt_field_count(Stmt->stmt); i++)
   {
@@ -1194,6 +1194,8 @@ SQLRETURN MADB_GetOutParamsFixValues(MADB_Stmt *Stmt, int CurrentOffset)
           LengthPtr = (SQLLEN *)GetBindOffset(Stmt->Apd, ApdRecord, ApdRecord->OctetLengthPtr, CurrentOffset, sizeof(SQLLEN));
           if (LengthPtr == NULL)
             LengthPtr = &Dummy;
+
+          //fix LengthPtr by windows x64 libobclient(sizeof(long)!=sizeof(SQLLEN))
 
           //Output parameters need to be converted
           switch (ApdRecord->ConciseType)
@@ -1226,7 +1228,9 @@ SQLRETURN MADB_GetOutParamsFixValues(MADB_Stmt *Stmt, int CurrentOffset)
           case SQL_C_ULONG:
           case SQL_C_SLONG:
           case SQL_C_DOUBLE:
-          default:
+          default: {
+              *LengthPtr = length;
+            }
             break;
           }
 
@@ -1550,7 +1554,7 @@ SQLRETURN MADB_ExecuteNosspsBatch(MADB_Stmt *Stmt)
       {
         SQLLEN Length = MADB_CalculateLength2Str(Stmt, OctetLengthPtr, ApdRecord, DataPtr);
         SQLLEN LengthSrc = Length;
-        SQLLEN ClientLen = Length + MADB_MIN_PARAM_STR;
+        SQLLEN ClientLen = 2*Length + MADB_MIN_PARAM_STR;// Prevent memory overruns
 
         //param 2 str
         char *ClientValue = (char *)MADB_CALLOC(ClientLen);
@@ -1719,7 +1723,7 @@ SQLRETURN MADB_ExecuteNossps(MADB_Stmt *Stmt)
       {
         SQLLEN Length = MADB_CalculateLength2Str(Stmt, OctetLengthPtr, ApdRecord, DataPtr);
         SQLLEN LengthSrc = Length;
-        SQLLEN ClientLen = Length + MADB_MIN_PARAM_STR;
+        SQLLEN ClientLen = 2*Length + MADB_MIN_PARAM_STR;
 
         //param 2 str
         char *ClientValue = (char *)MADB_CALLOC(ClientLen);
@@ -5465,6 +5469,8 @@ SQLRETURN MADB_StmtColumnCount(MADB_Stmt *Stmt, SQLSMALLINT *ColumnCountPtr)
       if (Stmt->arrayRefCursor[Stmt->lastRefCursor] == 0) {
         ret = SQL_SUCCESS_WITH_INFO;
       }
+    } else if (Stmt->Query.QueryType == MADB_QUERY_CALL){
+      *ColumnCountPtr = 0;
     }
   } else {
     *ColumnCountPtr = (SQLSMALLINT)MADB_STMT_COLUMN_COUNT(Stmt);
@@ -6503,6 +6509,7 @@ SQLRETURN MADB_StmtCloseRefCursor(MADB_Stmt *Stmt)
   if (Stmt->stmtRefCursor) {
     mysql_stmt_close(Stmt->stmtRefCursor);
     Stmt->stmtRefCursor = NULL;
+    MADB_RESET_COLUMT_COUNT(Stmt);
   }
   return ret;
 }

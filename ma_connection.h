@@ -69,6 +69,13 @@ char* MADB_GetDefaultPluginsDir(char* Buffer, size_t Size);
                                     SQL_CVT_REAL | SQL_CVT_SMALLINT | SQL_CVT_TIME | SQL_CVT_TIMESTAMP |\
                                     SQL_CVT_TINYINT | SQL_CVT_VARCHAR | SQL_CVT_WCHAR | \
                                     SQL_CVT_WLONGVARCHAR | SQL_CVT_WVARCHAR
+
+#define MADB_SUPPORTED_CONVERSIONS_ORACLE_VARCHAR SQL_CVT_BIGINT|SQL_CVT_BIT|SQL_CVT_CHAR|SQL_CVT_DATE|\
+                                    SQL_CVT_DECIMAL| SQL_CVT_DOUBLE |SQL_CVT_FLOAT |\
+                                    SQL_CVT_INTEGER | SQL_CVT_NUMERIC |\
+                                    SQL_CVT_REAL | SQL_CVT_SMALLINT | SQL_CVT_TIMESTAMP |\
+                                    SQL_CVT_TINYINT | SQL_CVT_VARCHAR
+
 /**************** Helper macros ****************/
 /* check if the connection is established */
 #define MADB_Dbc_ACTIVE(a) \
